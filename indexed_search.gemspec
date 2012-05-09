@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.name        = "indexed_search"
   s.version     = IndexedSearch::VERSION
   s.authors     = ["David Burry"]
-  s.homepage    = "TODO"
+  s.homepage    = "https://github.com/dburry/indexed_search"
   s.summary     = "A rich indexed search engine for Rails written in pure Ruby."
   s.description = "A rich indexed search engine for Rails written in pure Ruby."
 
