@@ -23,7 +23,7 @@ class InitialSetup < ActiveRecord::Migration
     add_index :words, :primary_metaphone
     add_index :words, :secondary_metaphone
 
-    create_table :entries do |t|
+    create_table(:entries, :options => 'ENGINE=InnoDB') do |t|
        t.integer 'word_id', :null => false
        # this needs to be big int to hold larger indexes...
        t.column 'rowidx', 'BIGINT', :null => false
