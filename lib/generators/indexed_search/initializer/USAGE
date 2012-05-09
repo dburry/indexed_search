@@ -1,0 +1,8 @@
+Description:
+    Creates an initializer for customizing any global search engine settings for your app.
+
+Example:
+    rails generate indexed_search:initializer
+
+    This will create:
+        config/initializers/indexed_search.rb

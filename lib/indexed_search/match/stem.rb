@@ -1,0 +1,87 @@
+
+module IndexedSearch
+  module Match
+    
+    # Performs a word stemming match, using the Porter word stemming algorithm,
+    # see: http://tartarus.org/martin/PorterStemmer/  Note the Porter algorithm is designed for English.
+    # Requires the stemmer gem, see: http://stemmer.rubyforge.org/wiki/wiki.pl
+    # or the text gem,
+    # 
+    # Uses a stem column to store a stem with each entry in the IndexedSearch::Word model.
+    class Stem < IndexedSearch::Match::Base
+      
+      # Stem matches are of higher importance than most things except exact, they match relatively few words.
+      # But there are better stemmer algorithms out there, so not too high of a multiplier :)
+      self.rank_multiplier = [12,    11]
+      self.term_multiplier = [ 1.30,  1.25]
+      
+      # Set maximum stem length
+      cattr_accessor :max_length
+      self.max_length = 64
+      
+      cattr_accessor :implementation
+      def self.implementation=(what)
+        if what == :stemmer
+          require 'stemmer'
+          class_eval("def self.make_index_value(term); make_index_value_stemmer(term); end")
+        elsif what == :text
+          require 'text'
+          class_eval("def self.make_index_value(term); make_index_value_text(term); end")
+        end
+        @@implementation = what
+      end
+      
+      def initialize(scope, terms)
+        super(scope, terms)
+        raise 'Error: stem implementation not chosen' if @@implementation.nil?
+      end
+      
+      def scope
+        @scope.where(self.class.matcher_attribute => term_map.keys)
+      end
+      self.matcher_attribute = :stem
+      
+      def term_map
+        term_maps[0]
+      end
+      def term_maps
+        @term_maps ||= [].tap do |maps|
+          # 3 maps: both, words with stem equal to this term's stem, words with stem equal to this term
+          # TODO: these still don't actually work right.. grr.. (the select in result.find weeds some unicode matches out
+          # (which should be fixed by better normalization) and also weeds out the 3rd map term matches oops!)
+          3.times { maps << Hash.new { |hash,key| hash[key] = [] } }
+          term_matches.each do |term|
+            stem = self.class.make_index_value(term)
+            maps[0][stem] << term
+            maps[0][term] << term if term != stem
+            maps[1][stem] << term
+            maps[2][term] << term
+          end
+        end
+      end
+      
+      # stem routine, enforces set length too, stemmer gem version
+      def self.make_index_value_stemmer(term)
+        term.stem[0..max_length]
+      end
+      # stem routine, enforces set length too, text gem version
+      def self.make_index_value_text(term)
+        # TODO figure out how to normalize these to ascii... (they've only been normalized by case)
+        Text::PorterStemming.stem(term)[0..max_length]
+      end
+      
+      def results
+        [].tap do |res|
+          unless term_maps[1].blank?
+            res << IndexedSearch::Match::Result.new(self, term_maps[1], rank_multiplier[0], term_multiplier[0], limit_reduction_factor, type_reduction_factor)
+          end
+          unless term_maps[2].blank?
+            res << IndexedSearch::Match::Result.new(self, term_maps[2], rank_multiplier[1], term_multiplier[1], limit_reduction_factor, type_reduction_factor)
+          end
+        end
+      end
+      
+    end
+    
+  end
+end
