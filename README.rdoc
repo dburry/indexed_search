@@ -4,39 +4,39 @@ A rich indexed search engine for Rails written in pure Ruby.
 
 == Dependencies
 
- * Ruby 1.9.x
- * Rails 3.x
- * Text[http://text.rubyforge.org/] for various matcher algorithms.
- * UnicodeUtils[http://unicode-utils.rubyforge.org/] for international character case folding.
- * REQUIRES MYSQL CURRENTLY (plan to suppport others eventually)
+* Ruby 1.9.x
+* Rails 3.x
+* Text[http://text.rubyforge.org/] for various matcher algorithms.
+* UnicodeUtils[http://unicode-utils.rubyforge.org/] for international character case folding.
+* REQUIRES MYSQL CURRENTLY (plan to suppport others eventually)
 
 == Features
 
- * Automatically indexes words as your models change, for quick searching and lookup.
- * Supports indexing multiple models in one index, searching it, and displaying them all together in one ranked list.
- * Extensive control over the indexed importance of each occurrence of each word.
- * Flexible matching architecture, many common algorithms included (exact, stem, soundex, metaphone, and more).
- * Extensive control over how search results aare ranked, for example:
-   * Base score is based on the indexed importance of words found.
-   * More exact word matches rank higher than more general matches.
-   * Results that match multiple terms score higher than results that match fewer.
-   * Each model row can have an arbitrary relative score that influences ranking, based on your data.
- * Can easily be configured to support any language (supports every language with spaces between words by default).
- * Many optimizations (which you can tweak) for pre-pruning large result sets, to prevent searches from slowing down as you ccollect more data.
- * Can disable auto-indexing for models that only change with a release cycle, for performance (just rebuild index at release time with rake task).
- * Indexes can be fully rebuilt in-place without causing down time to the search system.
- * Indexes can be blown away and rebuilt from scratch (faster, but causes incomplete results returned until rebuilt)
- * Partial index rebuilding possible by model, scope, or individual row, for special needs.
- * Easy to setup and administrate with generators and rake tasks.
+* Automatically indexes words as your models change, for quick searching and lookup.
+* Supports indexing multiple models in one index, searching it, and displaying them all together in one ranked list.
+* Extensive control over the indexed importance of each occurrence of each word.
+* Flexible matching architecture, many common algorithms included (exact, stem, soundex, metaphone, and more).
+* Extensive control over how search results aare ranked, for example:
+  * Base score is based on the indexed importance of words found.
+  * More exact word matches rank higher than more general matches.
+  * Results that match multiple terms score higher than results that match fewer.
+  * Each model row can have an arbitrary relative score that influences ranking, based on your data.
+* Can easily be configured to support any language (supports every language with spaces between words by default).
+* Many optimizations (which you can tweak) for pre-pruning large result sets, to prevent searches from slowing down as you ccollect more data.
+* Can disable auto-indexing for models that only change with a release cycle, for performance (just rebuild index at release time with rake task).
+* Indexes can be fully rebuilt in-place without causing down time to the search system.
+* Indexes can be blown away and rebuilt from scratch (faster, but causes incomplete results returned until rebuilt)
+* Partial index rebuilding possible by model, scope, or individual row, for special needs.
+* Easy to setup and administrate with generators and rake tasks.
 
 === Limitations
 
- * MySQL only currently! (more eventually in the future)
- * Should use transaction-capable table types (like InnoDB, which is slower than MyISAM) if you use any auto-reindexing capabilities.
- * Searches are boolean only currently, and do not consider how close the resulting words are to each other, and cannot do arbitrary full-text or phrase search. In practice this limitation doesn't seem to hurt much however, because of the extensive control over word importance through other means.
- * Does not yet support multiple wildly-different languages at once, when different word-splitting algorithms must be employed for each different one (they are all supported, just not within the same installation yet).
- * Being a pure Ruby/SQL immplementation, there could be some space and speed disadvantages compared to some other native compiled systems (but this is easier to setup and manage, so..)
- * Proper international language (non-ascii) support in the index requires SQL-style schema dumping set in <tt>application.rb</tt>, due to database-specific column types.
+* MySQL only currently! (more eventually in the future)
+* Should use transaction-capable table types (like InnoDB, which is slower than MyISAM) if you use any auto-reindexing capabilities.
+* Searches are boolean only currently, and do not consider how close the resulting words are to each other, and cannot do arbitrary full-text or phrase search. In practice this limitation doesn't seem to hurt much however, because of the extensive control over word importance through other means.
+* Does not yet support multiple wildly-different languages at once, when different word-splitting algorithms must be employed for each different one (they are all supported, just not within the same installation yet).
+* Being a pure Ruby/SQL immplementation, there could be some space and speed disadvantages compared to some other native compiled systems (but this is easier to setup and manage, so..)
+* Proper international language (non-ascii) support in the index requires SQL-style schema dumping set in <tt>application.rb</tt>, due to database-specific column types.
 
 == Quick Start
 
@@ -208,15 +208,15 @@ Set up your view to have something like:
 
 === The Index
 
- * Word index (every unique word in the index, after parsing, case folding, etc)
- * Result entry index (many-to-many relationship between words and model rows).
+* Word index (every unique word in the index, after parsing, case folding, etc)
+* Result entry index (many-to-many relationship between words and model rows).
 TODO: explain
 
 === Search (Lookup) Process
 
- * Query
- * Match
- * Results
+* Query
+* Match
+* Results
 TODO: explain
 
 == Contributing
@@ -224,18 +224,18 @@ TODO: explain
 If you think you found a bug or want a feature, get involved at http://github.com/dburry/indexed_search/issues  If you'd then like to contribute a patch, use Github's wonderful fork and pull request features.
 
 To set up a full development environment:
- * <tt>git clone</tt> the repository,
- * have RVM[https://rvm.beginrescueend.com/] and Bundler[http://gembundler.com/] installed,
- * then cd into your repo (follow any RVM prompts if this is your first time using that),
- * and run <tt>bundle install</tt> to pull in all the rest of the development dependencies.
- * After that point, <tt>rake -T</tt> should be fairly self-explanatory.
+* <tt>git clone</tt> the repository,
+* have RVM[https://rvm.beginrescueend.com/] and Bundler[http://gembundler.com/] installed,
+* then cd into your repo (follow any RVM prompts if this is your first time using that),
+* and run <tt>bundle install</tt> to pull in all the rest of the development dependencies.
+* After that point, <tt>rake -T</tt> should be fairly self-explanatory.
 
 == Alternatives
 
- * Postgres text search
- * Sphinx
- * Lucene
- * Other ruby-based ones
+* Postgres text search
+* Sphinx
+* Lucene
+* Other ruby-based ones
 
 TODO: discussion, feature comparisons, and benchmarks
 
