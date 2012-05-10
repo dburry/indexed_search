@@ -89,5 +89,8 @@ module IndexedSearch
       connection.execute("ALTER TABLE entries AUTO_INCREMENT = 1") if count == 0
     end
     
+    def to_s
+      model.to_s
+    end
   end
 end
