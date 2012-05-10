@@ -71,7 +71,7 @@ module IndexedSearch
       count(:select => 'DISTINCT rowidx')
     end
     # easy paging of results
-    scope(:paged, lambda { |size, num| limit(size).offset(size * (num - 1)) })
+    scope(:paged, lambda { |size, num| limit(size).offset(size * ([num - 1, 0].max)) })
 
     # get the instantiated results model class from the hit(s) we represent
     def self.models
