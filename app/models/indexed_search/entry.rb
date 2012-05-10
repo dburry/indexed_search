@@ -78,7 +78,7 @@ module IndexedSearch
       all.collect { |hit| hit.model }
     end
     def model
-      @model ||= model_type.find_by_id(modelrowid)
+      @model ||= model_type.where(model_type.id_for_index_attr => modelrowid).first
     end
     def model_type
       @@model_type ||= IndexedSearch::Index.models_by_id[modelid]
