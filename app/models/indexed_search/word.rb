@@ -128,6 +128,9 @@ module IndexedSearch
       empty_entry.delete_all
       connection.execute("ALTER TABLE words AUTO_INCREMENT = 1") if count == 0
     end
-    
+
+    def to_s
+      word
+    end
   end
 end
