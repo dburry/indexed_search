@@ -81,7 +81,7 @@ module IndexedSearch
       @model ||= model_type.where(model_type.id_for_index_attr => modelrowid).first
     end
     def model_type
-      @@model_type ||= IndexedSearch::Index.models_by_id[modelid]
+      @model_type ||= IndexedSearch::Index.models_by_id[modelid]
     end
     
     # TODO: move this into a supporting library that adds it to activerecord somewhere?
