@@ -108,6 +108,26 @@ module IndexedSearch
         IndexedSearch::Index.models_by_id.invert[self]
       end
       
+      # The column from your indexed model that will be stored in the Entry model's modelrowid attribute.
+      #
+      # Override this in your model if you're using a different column than what is returned by
+      # model.primary_key (usually 'id' unless you've set self.primary_key = 'something_else' in
+      # your model).
+      #
+      # This column *must* be a unique integer key in your table.
+      #
+      # If your table's primary key is a composite primary key, then you must have another unique
+      # key (not composite) defined in your table and override this method to tell indexed_search
+      # which column to use.
+      #
+      # Hint: To define an auto-increment column that is not your primary key in MySQL, use:
+      #   alter table #{@table_name} add column #{column} int(11) NOT NULL AUTO_INCREMENT UNIQUE KEY
+      #
+      # (id would return an array in that case (if using composite_primary_keys gem, anyway), which
+      # is hard to store in a single column in the Entry model.)
+      def id_for_index_attr
+        :id
+      end
     end # ClassMethods
     
     module InstanceMethods
@@ -198,8 +218,12 @@ module IndexedSearch
         wrd_rnk_map.each { |wrd, rnk| srch_rnks[wrd_id_map[wrd]] = rnk }
         srch_rnks
       end
+
+      def id_for_index
+        send self.class.id_for_index_attr
+      end
       def make_search_insertions(ranks)
-        ranks.collect { |wid, rnk| {:word_id => wid, :rowidx => ((id << 8) | model_id), :modelid => model_id, :modelrowid => id, :rank => rnk, :row_priority => search_priority.round(15)} }
+        ranks.collect { |wid, rnk| {:word_id => wid, :rowidx => ((id_for_index << 8) | model_id), :modelid => model_id, :modelrowid => id_for_index, :rank => rnk, :row_priority => search_priority.round(15)} }
       end
       
     end # InstanceMethods
