@@ -189,6 +189,7 @@ Set up your controller to have something like:
 
  # app/controllers/search_controller.rb
  class SearchController < ApplicationController
+   include IndexedSearchHelper
    def show
      @raw_query       = params[:query] || ''
      @page_number     = params[:page].to_i || 0
