@@ -185,14 +185,14 @@ Run rake task to build/update initial index:
 
  $ rake indexed_search:update
 
-Set up your controller to have something like:
+Set up your controller to have something like this (TODO: do wiki page with error checking):
 
  # app/controllers/search_controller.rb
  class SearchController < ApplicationController
-   include IndexedSearchHelper
+   include IndexedSearchHelper # for calculate_page_details
    def show
      @raw_query       = params[:query] || ''
-     @page_number     = params[:page].to_i || 0
+     @page_number     = params[:page].present? ? params[:page].to_i : 1
      RESULTS_PER_PAGE = 10
      @parsed_query    = IndexedSearch::Query.new(@raw_query)
      @total_found     = IndexedSearch::Entry.count_results(@parsed_query)
@@ -201,7 +201,7 @@ Set up your controller to have something like:
    end
  end
 
-Set up your view to have something like:
+Set up your view to have something like this (TODO: do wiki page with fragment caching/expiring):
 
  <!-- app/views/search/show.rb -->
  <% form_tag('/search') do %>
@@ -210,10 +210,8 @@ Set up your view to have something like:
  <% end %>
  <p>Results for: <%= @raw_query %>, showing <%= @first_idx %>-<%= @last_idx %> of <%= @total_found %></p>
  <% @result_scope.each do |result| %>
-   <% cache(:controller => 'search', :action => 'show', :action_suffix => "#{result.modelid}.#{result.modelrowid}") do %>
-     <div><%= link_to result.model.search_result_title, result.model %></div>
-     <div><%= truncate result.model.search_result_summary, :length => 100 %></div>
-   <% end %>
+   <div><b><%= link_to result.model.search_result_title, result.model %></b></div>
+   <div><%= truncate result.model.search_result_summary, :length => 100 %></div>
  <% end %>
 
 == Architecture Overview
