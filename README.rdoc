@@ -216,18 +216,37 @@ Set up your view to have something like this (TODO: do wiki page with fragment c
 
 == Architecture Overview
 
-=== The Index
+=== The Index Data
 
-* Word index (every unique word in the index, after parsing, case folding, etc)
-* Result entry index (many-to-many relationship between words and model rows).
-TODO: explain
+* Word index (IndexedSearch::Word) - every unique parsed word in the index, after parsing, case folding, etc. Also includes cached information about each word that makes querying faster and easier (such as what its soundex value is, how frequently the word is found, etc).
 
-=== Search (Lookup) Process
+* Result entry index (IndexedSearch::Entry) - many-to-many relationship between words and model rows. Also includes cached information about each hit, such as a rank for how important that word is in that model row (being in the name of the object is better than being in the description, for example).
 
-* Query parsing
-* Matching words in word index
-* Getting results
-TODO: explain in more detail
+=== Search Lookup Process
+
+* Parsing a literal query string into words or search terms. For example:
+
+ query = IndexedSearch::Query.new('whole string of whole words')
+ # query => ['whole', 'string', 'of', 'words'] (similar to an array, but with extra methods)
+
+* Look in the IndexedSearch::Word model table to find what indexed words match the parsed query.  This uses all the enabled matchers internally to do this (IndexedSearch::Match::Base subclasses, enabled by being listed in IndexedSearch::Match.perform_match_types). For example:
+
+ results = IndexedSearch::Match::ResultList.new(query)
+ results = query.results
+ # results => an IndexedSearch::Match::ResultList instance (similar to array of IndexedSearch::Match::Result)
+ # query.results is a shortcut, cached in the query object
+
+* Query the big IndexedSearch::Entry model table to find the actual app model matches
+
+ scope = IndexedSearch::Entry.matching_query(results).ranked_rows(results).paged(page_size, page_number)
+ scope = IndexedSearch::Entry.find_results(query, page_size, page_number)
+ # scope => an entry table scope that has one row per found result (#find_results is a shortcut)
+
+* loop over the resulting models and display them in a pretty way
+
+ scope.each { |s| puts s.model.to_s }
+ # models are cached in the entry objects so you can call them multiple times without pain
+ # note scope is lazily loaded at the last possible moment in your view
 
 == Alternatives
 
