@@ -143,6 +143,7 @@ Set up indexer observers (only for models that auto-reindex):
 
  # app/indexers/foo_thing_indexer.rb
  class FooThingIndexer < ApplicationIndexer
+   observe FooThing
    def after_update(foo)
      # modify to only update for things used in search_index_info (not unrelated changes):
      # note: foo.<attribute>_changed? doesn't seem to work right with null values... (rails bug or feature?)
@@ -194,10 +195,8 @@ Set up your controller to have something like this (TODO: do wiki page with erro
      @raw_query       = params[:query] || ''
      @page_number     = params[:page].present? ? params[:page].to_i : 1
      RESULTS_PER_PAGE = 10
-     @parsed_query    = IndexedSearch::Query.new(@raw_query)
-     @total_found     = IndexedSearch::Entry.count_results(@parsed_query)
-     (@first_idx, @last_idx, @page_count) = calculate_page_details(@page_number, RESULTS_PER_PAGE, @total_found)
-     @result_scope    = IndexedSearch::Entry.find_results(@parsed_query, RESULTS_PER_PAGE, @page_number)
+     parsed_query     = IndexedSearch::Query.new(@raw_query)
+     @result_scope    = IndexedSearch::Entry.find_results(parsed_query, RESULTS_PER_PAGE, @page_number)
    end
  end
 
@@ -208,7 +207,7 @@ Set up your view to have something like this (TODO: do wiki page with fragment c
    <%= text_field_tag 'query', @raw_query %>
    <%= submit_tag %>
  <% end %>
- <p>Results for: <%= @raw_query %>, showing <%= @first_idx %>-<%= @last_idx %> of <%= @total_found %></p>
+ <p>Results for: <%= @raw_query %>
  <% @result_scope.each do |result| %>
    <div><b><%= link_to result.model.search_result_title, result.model %></b></div>
    <div><%= truncate result.model.search_result_summary, :length => 100 %></div>
