@@ -1,4 +1,6 @@
 
+require 'each_batched'
+
 # 
 # Utility module containing what is needed to index a given model for searching
 # 
@@ -67,7 +69,6 @@
 #     end
 #   end
 # 
-
 
 module IndexedSearch
   module Index
