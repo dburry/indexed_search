@@ -58,9 +58,10 @@ Generate a migration:
  $ rake indexed_search_engine:install:migrations
  $ rake db:migrate
 
-Generate your config file at <tt>config/initializers/indexed_search.rb</tt> (see file for explanation of options):
+Generate your config file at <tt>config/initializers/indexed_search.rb</tt> (see file for explanation of options)
+and your application indexer at <tt>app/indexers/application_indexer.rb:
 
- $ rails generate indexed_search:initializer
+ $ rails generate indexed_search:install
 
 Edit model files:
 
@@ -133,11 +134,8 @@ Edit config file:
 
 Set up indexer observers (only for models that auto-reindex):
 
- # app/indexers/application_indexer.rb
- class ApplicationIndexer < IndexedSearch::ApplicationIndexer
-   # by default IndexedSearch::ApplicationIndexer indexes on *any* change (create, update, destroy).
-   # add more stuff here to all indexers that is application specific
- end
+ $ rails generate indexed_search:indexer foo_thing
+ $ rails generate indexed_search:indexer bar_thing
 
 .
 
@@ -160,6 +158,7 @@ Set up indexer observers (only for models that auto-reindex):
 
  # app/indexers/bar_thing_indexer.rb
  class BarThingIndexer < ApplicationIndexer
+  observe BarThing
   # remember that relationship that got indexed? well now reindex foo_thing when bar_thing changes too
    def after_update(bar)
      # if the relationship itself changed, update old and/or new one
@@ -186,7 +185,7 @@ Run rake task to build/update initial index:
 
  $ rake indexed_search:update
 
-Set up your controller to have something like this (TODO: do wiki page with error checking):
+Set up your controller to have something like this:
 
  # app/controllers/search_controller.rb
  class SearchController < ApplicationController
@@ -200,7 +199,7 @@ Set up your controller to have something like this (TODO: do wiki page with erro
    end
  end
 
-Set up your view to have something like this (TODO: do wiki page with fragment caching/expiring):
+Set up your view to have something like this:
 
  <!-- app/views/search/show.rb -->
  <% form_tag('/search') do %>

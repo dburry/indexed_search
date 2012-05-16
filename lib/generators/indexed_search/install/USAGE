@@ -1,0 +1,9 @@
+Description:
+    Installs initial config files for your app.
+
+Example:
+    rails generate indexed_search:install
+
+    This will create:
+        config/initializers/indexed_search.rb
+        app/indexers/application_indexer.rb

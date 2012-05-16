@@ -1,0 +1,79 @@
+
+class <%= class_name %>Indexer < ApplicationIndexer
+
+  # By default, this inherits from ApplicationIndexer, which keeps the index up to date
+  # when any sort of change is made to your application model.  The following line is what
+  # enables this behavior:
+  observe <%= class_name %>
+
+  # This file is also here to fine tune that behavior.  Often there are changes that can be
+  # made to your model that have nothing to do with the index (i.e. fields that do not
+  # affect the index, since they're not mentioned in search_index_info directly or indirectly).
+  # When this is the case, it's more efficient to override this default behavior here.
+  #
+  # For example, if the field "name" is all that's are used by the index:
+  #
+  #  def after_update(<%= singular_name %>)
+  #    <%= singular_name %>.update_search_index if <%= singular_name %>.name_was != <%= singular_name %>.name
+  #  end
+  #
+  # If the "public" field is used by search_priority but not in the index itself, then this is
+  # more efficient than a full reindex:
+  #
+  #  def after_update(<%= singular_name %>)
+  #    <%= singular_name %>.update_search_priority if <%= singular_name %>.public != <%= singular_name %>.public_was
+  #  end
+  #
+  # If this model is used by *another* model's index through an association, then you'd need
+  # to update the *other* index when this model changes!
+  #
+  # For example, if this model has a belongs_to relationship named "foo" and Foo is the model that
+  # has the "name" field on this model indexed through its has_many or has_one relationship:
+  #
+  #  def after_update(<%= singular_name %>)
+  #    # if the relationship itself changed, update old and/or new one
+  #    if <%= singular_name %>.foo_id_was != <%= singular_name %>.foo_id
+  #      <%= singular_name %>.foo.update_search_index unless <%= singular_name %>.foo_id.nil?
+  #      if ! <%= singular_name %>.foo_id_was.nil? && ! (old_foo = FooThing.find(<%= singular_name %>.foo_id_was)).nil?
+  #        old_foo.update_search_index
+  #      end
+  #    # otherwise if just the name changed, update current one if there is one
+  #    elsif <%= singular_name %>.name_was != <%= singular_name %>.name && ! <%= singular_name %>.foo_id.nil?
+  #      <%= singular_name %>.foo.update_search_index
+  #    end
+  #  end
+  #  # ApplicationIndexer by default tries to index <%= singular_name %>, *instead* we only want to index related foo
+  #  def after_create(<%= singular_name %>)
+  #    <%= singular_name %>.foo.update_search_index unless <%= singular_name %>.foo_id.nil?
+  #  end
+  #  def after_destroy(<%= singular_name %>)
+  #    <%= singular_name %>.foo.update_search_index unless <%= singular_name %>.foo_id.nil?
+  #  end
+  #
+  # Of course you could combine all the above ideas together. Just to be clear how to do this,
+  # here's a combined example:
+  #
+  #  def after_update(<%= singular_name %>)
+  #    if <%= singular_name %>.name_was != <%= singular_name %>.name
+  #      <%= singular_name %>.update_search_index
+  #      <%= singular_name %>.foo.update_search_index if ! <%= singular_name %>.foo_id.nil?
+  #    elsif <%= singular_name %>.public != <%= singular_name %>.public_was
+  #      <%= singular_name %>.update_search_priority
+  #    elsif <%= singular_name %>.foo_id_was != <%= singular_name %>.foo_id
+  #      <%= singular_name %>.foo.update_search_index unless <%= singular_name %>.foo_id.nil?
+  #      if ! <%= singular_name %>.foo_id_was.nil? && ! (old_foo = FooThing.find(<%= singular_name %>.foo_id_was)).nil?
+  #        old_foo.update_search_index
+  #      end
+  #    end
+  #  end
+  #  # ApplicationIndexer by default tries to index <%= singular_name %>, *additionally* we want to index related foo
+  #  def after_create(<%= singular_name %>)
+  #    <%= singular_name %>.create_search_index
+  #    <%= singular_name %>.foo.update_search_index unless <%= singular_name %>.foo_id.nil?
+  #  end
+  #  def after_destroy(<%= singular_name %>)
+  #    <%= singular_name %>.delete_search_index
+  #    <%= singular_name %>.foo.update_search_index unless <%= singular_name %>.foo_id.nil?
+  #  end
+
+end

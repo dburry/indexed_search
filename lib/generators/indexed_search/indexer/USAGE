@@ -1,0 +1,8 @@
+Description:
+    Creates an indexer for the indicated model.
+
+Example:
+    rails generate indexed_search:indexer foo
+
+    This will create:
+        app/indexers/foo_indexer.rb

@@ -1,0 +1,8 @@
+Description:
+    Creates an application indexer for your model indexers to inherit from.
+
+Example:
+    rails generate indexed_search:application_indexer
+
+    This will create:
+        app/indexers/application_indexer.rb
