@@ -59,7 +59,7 @@ Generate a migration:
  $ rake db:migrate
 
 Generate your config file at <tt>config/initializers/indexed_search.rb</tt> (see file for explanation of options)
-and your application indexer at <tt>app/indexers/application_indexer.rb:
+and your application indexer at <tt>app/indexers/application_indexer.rb</tt>:
 
  $ rails generate indexed_search:install
 
