@@ -14,6 +14,8 @@ module IndexedSearch
         self.type_reduction_factor = type_reduction_factor
         self.matchidx = matchidx
         self.list_map = Hash.new { |hash,key| hash[key] = [] }
+        self.reduced_by_limit_reduction_factor = false
+        self.ignored_because_already_used = []
       end
       def find
         # TODO: I don't think this select should be necessary for everything, right?
@@ -24,7 +26,7 @@ module IndexedSearch
       end
       
       # populated by result list class
-      attr_accessor :list_map
+      attr_accessor :list_map, :reduced_by_limit_reduction_factor, :ignored_because_already_used
       
       def list_map_words
         list_map.values.flatten.uniq

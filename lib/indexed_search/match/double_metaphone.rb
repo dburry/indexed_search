@@ -62,13 +62,13 @@ module IndexedSearch
         Text::Metaphone.double_metaphone(term).collect { |m| m.blank? ? nil : m[0..max_length] }
       end
       
-      def results
+      def results(do_all=false)
         [].tap do |res|
-          unless term_maps[1].blank?
+          if do_all || term_maps[1].present?
             res << IndexedSearch::Match::Result.new(self, term_maps[1], rank_multiplier[0], term_multiplier[0], limit_reduction_factor, type_reduction_factor, 0)
             res << IndexedSearch::Match::Result.new(self, term_maps[1], rank_multiplier[1], term_multiplier[1], limit_reduction_factor, type_reduction_factor, 1)
           end
-          unless term_maps[2].blank?
+          if do_all || term_maps[2].present?
             res << IndexedSearch::Match::Result.new(self, term_maps[2], rank_multiplier[2], term_multiplier[2], limit_reduction_factor, type_reduction_factor, 0)
             res << IndexedSearch::Match::Result.new(self, term_maps[2], rank_multiplier[3], term_multiplier[3], limit_reduction_factor, type_reduction_factor, 1)
           end

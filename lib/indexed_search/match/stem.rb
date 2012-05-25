@@ -70,12 +70,12 @@ module IndexedSearch
         Text::PorterStemming.stem(term)[0..max_length]
       end
       
-      def results
+      def results(do_all=false)
         [].tap do |res|
-          unless term_maps[1].blank?
+          if do_all || term_maps[1].present?
             res << IndexedSearch::Match::Result.new(self, term_maps[1], rank_multiplier[0], term_multiplier[0], limit_reduction_factor, type_reduction_factor)
           end
-          unless term_maps[2].blank?
+          if do_all || term_maps[2].present?
             res << IndexedSearch::Match::Result.new(self, term_maps[2], rank_multiplier[1], term_multiplier[1], limit_reduction_factor, type_reduction_factor)
           end
         end

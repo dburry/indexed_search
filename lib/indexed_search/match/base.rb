@@ -78,6 +78,9 @@ module IndexedSearch
       def term_matches
         @term_matches ||= @terms.select { |t| self.class.match_against_term?(t) }
       end
+      def term_non_matches
+        @terms.reject { |t| self.class.match_against_term?(t) }
+      end
       
       # Whether or not we should do a given algorithm match on indicated input term word text.
       # Defaults to true, override in subclass for something custom.
@@ -122,9 +125,12 @@ module IndexedSearch
       end
       
       # override this if a matcher returns multiple kinds of results...
-      def results
-        term_matches.present? ? [IndexedSearch::Match::Result.new(self, term_map, rank_multiplier, term_multiplier,
-          limit_reduction_factor, type_reduction_factor)] : []
+      def results(do_all=false)
+        [].tap do |res|
+          if do_all || term_matches.present?
+            res << IndexedSearch::Match::Result.new(self, term_map, rank_multiplier, term_multiplier, limit_reduction_factor, type_reduction_factor)
+          end
+        end
       end
       
     end # base class
