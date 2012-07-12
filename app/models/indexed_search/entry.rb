@@ -12,7 +12,7 @@
 module IndexedSearch
   class Entry < ActiveRecord::Base
     belongs_to :word, :class_name => 'IndexedSearch::Word'
-    
+
     # main entry points for searching database (either whole thing, or scope a limit first)
     # returns results, sorted in ranking order, with pagination support
     # note it actually returns a scope that can be lazily loaded! use #models to convert to actual models
