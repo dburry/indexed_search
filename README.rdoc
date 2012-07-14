@@ -6,11 +6,12 @@ Supports multiple-model searches with ranked results, which encourages one simpl
 
 == Dependencies
 
+* *REQUIRES* *MYSQL* *CURRENTLY* (plan to suppport others eventually)
 * Ruby 1.9.x
 * Rails 3.x
 * Text[http://text.rubyforge.org/] for various matcher algorithms.
 * UnicodeUtils[http://unicode-utils.rubyforge.org/] for international character case folding.
-* REQUIRES MYSQL CURRENTLY (plan to suppport others eventually)
+* Valium[https://github.com/ernie/valium] and activerecord-import[https://github.com/zdennis/activerecord-import] and each_batched[https://github.com/dburry/each_batched] are used internally to speed up some SQL queries.
 
 == Features
 
@@ -44,11 +45,9 @@ Supports multiple-model searches with ranked results, which encourages one simpl
 
 == Documentation
 
-See: *Quick* *Start* at:
-https://github.com/dburry/indexed_search/wiki/Quick-Start
+See: Quick-Start-Guide[https://github.com/dburry/indexed_search/wiki/Quick-Start] for installation and usage.
 
-For more in-depth explanations and more options, see the full wiki at:
-https://github.com/dburry/indexed_search/wiki
+For more in-depth explanations and more options, see the full wiki at: https://github.com/dburry/indexed_search/wiki
 
 == Alternatives
 
