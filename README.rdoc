@@ -42,107 +42,13 @@ Supports multiple-model searches with ranked results, which encourages one simpl
 * Proper international language (non-ascii) support in the index requires SQL-style schema dumping set in <tt>application.rb</tt>, due to database-specific column types.
 * No complicated queries: no operators, attribute selectors, etc. (yes, this is a benefit too)
 
-== Quick Start
+== Documentation
 
-Install into your rails app:
+See: *Quick* *Start* at:
+https://github.com/dburry/indexed_search/wiki/Quick-Start
 
-```rb
- # Gemfile
- gem 'indexed_search'
- # or use development version:
- # gem 'indexed_search', :git => 'https://github.com/dburry/indexed_search.git'
-```
-
-```sh
- $ bundle install
-```
-
-Generate a migration:
-
-```sh
- $ rake indexed_search_engine:install:migrations
- $ rake db:migrate
-```
-
-Generate your config file at <tt>config/initializers/indexed_search.rb</tt> (see file for explanation of options)
-and your application indexer at <tt>app/indexers/application_indexer.rb</tt>:
-
-```sh
- $ rails generate indexed_search:install
-```
-
-Edit model files:
-
-```rb
- # app/models/foo_thing.rb
- class FooThing < ActiveRecord::Base
-
-   # index all rows, or define a more limited scope here
-   scope :search_index_scope, {}
-
-   # how to index this row!
-   def search_index_info
-     [
-       [name,        50],
-       [abstract,     6],
-     ]
-   end
-
-   # arbitrary model-based or row-based priority modifier
-   def search_priority
-     0.5
-   end
- end
-```
-
-Edit config file:
-
-```rb
- # config/initializers/indexed_search.rb
- # Maps indexed models to internal integer id numbers.  Makes indexes much shorter and faster,
- # instead of using a Rails-STI-style "type" string column
- IndexedSearch::Index.models_by_id = {
-   1 => FooThing
- }
-```
-
-Run rake task to build/update initial index:
-
-```sh
- $ rake indexed_search:update
-```
-
-Set up your controller to have something like this:
-
-```rb
- # app/controllers/search_controller.rb
- class SearchController < ApplicationController
-   include IndexedSearchHelper # for calculate_page_details
-   def show
-     @raw_query       = params[:query] || ''
-     @page_number     = params[:page].present? ? params[:page].to_i : 1
-     RESULTS_PER_PAGE = 10
-     parsed_query     = IndexedSearch::Query.new(@raw_query)
-     @result_scope    = IndexedSearch::Entry.find_results(parsed_query, RESULTS_PER_PAGE, @page_number)
-   end
- end
-```
-
-Set up your view to have something like this:
-
-```erb
- <!-- app/views/search/show.erb -->
- <% form_tag('/search') do %>
-   <%= text_field_tag 'query', @raw_query %>
-   <%= submit_tag %>
- <% end %>
- <% @result_scope.each do |result| %>
-   <!-- assumes all your models have overridden to_s to show something nice -->
-   <div><b><%= link_to result, result.model %></b></div>
- <% end %>
-```
-
-For more in-depth explanations and more options, see the wiki at: https://github.com/dburry/indexed_search/wiki
+For more in-depth explanations and more options, see the full wiki at:
+https://github.com/dburry/indexed_search/wiki
 
 == Alternatives
 
