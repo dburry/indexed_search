@@ -46,147 +46,75 @@ Supports multiple-model searches with ranked results, which encourages one simpl
 
 Install into your rails app:
 
+```rb
  # Gemfile
  gem 'indexed_search'
+ # or use development version:
+ # gem 'indexed_search', :git => 'https://github.com/dburry/indexed_search.git'
+```
 
-.
-
+```sh
  $ bundle install
+```
 
 Generate a migration:
 
+```sh
  $ rake indexed_search_engine:install:migrations
  $ rake db:migrate
+```
 
 Generate your config file at <tt>config/initializers/indexed_search.rb</tt> (see file for explanation of options)
 and your application indexer at <tt>app/indexers/application_indexer.rb</tt>:
 
+```sh
  $ rails generate indexed_search:install
+```
 
 Edit model files:
 
+```rb
  # app/models/foo_thing.rb
  class FooThing < ActiveRecord::Base
-   has_many :bar_things
 
-   # the following include can be left out if this model will never be auto-reindexed
-   include IndexedSearch::Index
-
-   # define scope as {} if every row should be indexed
-   scope :search_index_scope, where(:public => true)
-
-   # title and summary only used by views (see later on)
-   def search_result_title
-     name
-   end
-   def search_result_summary
-     # implement whatever text munging you need here
-     squish_space(strip_html(description))
-   end
+   # index all rows, or define a more limited scope here
+   scope :search_index_scope, {}
 
    # how to index this row!
    def search_index_info
-     # each row is one ranking expression
-     # words are indexed by model row, with their total score being the primary ranking element,
-     # calculated by adding up all individual occurrences of that word within the following expressions.
      [
-       # string/array of words to index, integer of rank to assign for each word
-       # times as many different rows as you need to describe all searchable text of the model
-       # string may be nil or empty, if this one doesn't apply this time
-       [name,                             50],
-       [abstract,                          6],
-       # you can add arbitrary model-based keywords:
-       ['foo',                            10],
-       # you can perform pre-processing:
-       [strip_html(description),           1],
-       # more complicated pre-processing example, +2 points for words in 1st sentence:
-       [strip_html(description =~ /.*?\./m ? $~[0] : description), 2],
-       # you can index attributes on relationships too
-       [bar_things.collect(&:name),        4]
+       [name,        50],
+       [abstract,     6],
      ]
    end
 
-   # If some rows should have more importance than others (for example, archived stuff might be
-   # less important than current stuff), then set that here. It will affect results ranking.
-   # The following could also be an actual model attribute if you want to precalculate/store it,
-   # for example, for static data that could make indexing go a bit faster.
-   # Should return a float between 0 and 1.
+   # arbitrary model-based or row-based priority modifier
    def search_priority
-     0.5 + (public? ? 0.3 : -0.2)
+     0.5
    end
  end
-
-.
-
- # app/models/bar_thing.rb
- class BarThing < ActiveRecord::Base
-   belongs_to :foo_thing
- end
+```
 
 Edit config file:
 
+```rb
  # config/initializers/indexed_search.rb
  # Maps indexed models to internal integer id numbers.  Makes indexes much shorter and faster,
  # instead of using a Rails-STI-style "type" string column
  IndexedSearch::Index.models_by_id = {
    1 => FooThing
  }
-
-Set up indexer observers (only for models that auto-reindex):
-
- $ rails generate indexed_search:indexer foo_thing
- $ rails generate indexed_search:indexer bar_thing
-
-.
-
- # app/indexers/foo_thing_indexer.rb
- class FooThingIndexer < ApplicationIndexer
-   observe FooThing
-   def after_update(foo)
-     # modify to only update for things used in search_index_info (not unrelated changes):
-     # note: foo.<attribute>_changed? doesn't seem to work right with null values... (rails bug or feature?)
-     if foo.name_was != foo.name || foo.description_was != foo.description || foo.abstract_was != foo.abstract
-       foo.update_search_index
-     # this attribute is only used by search_priority, so this is much more efficient than a full reindex:
-     elsif foo.public != foo.public_was
-       foo.update_search_priority
-     end
-   end
- end
-
-.
-
- # app/indexers/bar_thing_indexer.rb
- class BarThingIndexer < ApplicationIndexer
-  observe BarThing
-  # remember that relationship that got indexed? well now reindex foo_thing when bar_thing changes too
-   def after_update(bar)
-     # if the relationship itself changed, update old and/or new one
-     if bar.foo_thing_id_was != bar.foo_thing_id
-       bar.foo_thing.update_search_index unless bar.foo_thing_id.nil?
-       if ! bar.foo_thing_id_was.nil? && ! (old_foo = FooThing.find(bar.foo_thing_id_was)).nil?
-         old_foo.update_search_index
-       end
-     # otherwise if just the name changed, update current one if there is one
-     elsif bar.name_was != bar.name && ! bar.foo_thing_id.nil?
-       bar.foo_thing.update_search_index
-     end
-   end
-   # ApplicationIndexer by default tries to index bar_thing, instead we only want to index related foo_thing
-   def after_create(bar)
-     bar.foo_thing.update_search_index unless bar.foo_thing_id.nil?
-   end
-   def after_destroy(bar)
-     bar.foo_thing.update_search_index unless bar.foo_thing_id.nil?
-   end
- end
+```
 
 Run rake task to build/update initial index:
 
+```sh
  $ rake indexed_search:update
+```
 
 Set up your controller to have something like this:
 
+```rb
  # app/controllers/search_controller.rb
  class SearchController < ApplicationController
    include IndexedSearchHelper # for calculate_page_details
@@ -198,21 +126,23 @@ Set up your controller to have something like this:
      @result_scope    = IndexedSearch::Entry.find_results(parsed_query, RESULTS_PER_PAGE, @page_number)
    end
  end
+```
 
 Set up your view to have something like this:
 
- <!-- app/views/search/show.rb -->
+```erb
+ <!-- app/views/search/show.erb -->
  <% form_tag('/search') do %>
    <%= text_field_tag 'query', @raw_query %>
    <%= submit_tag %>
  <% end %>
- <p>Results for: <%= @raw_query %>
  <% @result_scope.each do |result| %>
-   <div><b><%= link_to result.model.search_result_title, result.model %></b></div>
-   <div><%= truncate result.model.search_result_summary, :length => 100 %></div>
+   <!-- assumes all your models have overridden to_s to show something nice -->
+   <div><b><%= link_to result, result.model %></b></div>
  <% end %>
+```
 
-For more in-depth explanations, see the wiki at: https://github.com/dburry/indexed_search/wiki
+For more in-depth explanations and more options, see the wiki at: https://github.com/dburry/indexed_search/wiki
 
 == Alternatives
 
