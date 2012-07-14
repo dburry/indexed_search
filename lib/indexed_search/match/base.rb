@@ -65,8 +65,47 @@ module IndexedSearch
       # This depends on the "entries_count" column in the "words" model to function properly.
       class_attribute :type_reduction_factor
       self.type_reduction_factor = 100
-      
-      
+
+      # Overridden by most subclasses to indicate a multiplier used by the ranking system
+      # to indicate the relative value of each match type, compared to matches of other types.
+      # This is used as a base multiplier against every match.
+      # Defaults to 1, which is a very low value, and should be an integer in the range of about 1 to 200 or so.
+      # (as a multiplier there isn't technically a limit, that's just a suggestion)
+      class_attribute :rank_multiplier
+      self.rank_multiplier = 1
+
+      # Overridden by most subclasses to indicate a multiplier used by the ranking system
+      # to indicate the relative value of each match type, compared to matches of other types.
+      # This is used as an exponential multiplier to make results that match multiple terms score much higher.
+      # Defaults to 1.0, which is a very low value, and should be a float in the range of about 1.0 or 2.0 or so.
+      # (as a multiplier there isn't technically a limit, that's just a suggestion)
+      class_attribute :term_multiplier
+      self.term_multiplier = 1.0
+
+      # If you want a given match type to only accept words with at least so many characters, override this.
+      # Defaults to nil, which means there is no minimum, some matchers do override by default.
+      class_attribute :min_term_length
+      self.min_term_length = nil
+
+      # If you want a given match type to only accept words with at most so many characters, override this.
+      # Defaults to nil, which means there is no maximum, some matchers do override by default.
+      class_attribute :max_term_length
+      self.max_term_length = nil
+
+      # If you have custom code you want to run to check the format of each term to determine if it can be used
+      # by a given matcher or not, set a proc here.  Note that setting this overrides any min_term_length and
+      # max_term_length settings, unless your code actually makes use of them...
+      # Defaults to nil, which means there is no such code, all word formats are allowed to be indexed,
+      # and some matchers do override this default.
+      class_attribute :match_against_term
+      self.match_against_term = nil
+
+      # Override in subclass to pick the IndexedSearch::Word model attribute that the given match type needs
+      # Defaults to "word" since that's what most of them need.
+      # Can also be changed in config file in cases where there is an unusual non-default database column name.
+      class_attribute :matcher_attribute
+      self.matcher_attribute = :word
+
       def initialize(scope, terms)
         @scope = scope
         @terms = terms
@@ -78,41 +117,30 @@ module IndexedSearch
       def term_matches
         @term_matches ||= @terms.select { |t| self.class.match_against_term?(t) }
       end
+
+      # the inverse of term_matches, a list of the terms that were rejected
+      # only used by explain rake task, not the usual searching algorithm
       def term_non_matches
         @terms.reject { |t| self.class.match_against_term?(t) }
       end
       
       # Whether or not we should do a given algorithm match on indicated input term word text.
-      # Defaults to true, override in subclass for something custom.
+      # Rather than overriding, see class attributes: min_term_length, max_term_length, match_against_term
       def self.match_against_term?(term)
-        true
+        if ! match_against_term.nil?
+          match_against_term.call(term)
+        else
+          return false if ! min_term_length.nil? && term.length < min_term_length
+          return false if ! max_term_length.nil? && term.length > max_term_length
+          true
+        end
       end
       
       # override in subclass to add a match-type-specific where clause to scope
       def scope
         @scope
       end
-      
-      # override in subclass to pick the IndexedSearch::Word model attribute that the given match type needs
-      class_attribute :matcher_attribute
-      self.matcher_attribute = :word
-      
-      # Overridden by most subclasses to indicate a multiplier used by the ranking system
-      # to indicate the relative value of each match type, compared to matches of other types.
-      # This is used as a base multiplier against every match.
-      # Defaults to 1, which is a very low value, and should be an integer in the range of about 1 to 200 or so.
-      # (as a multiplier there isn't technically a limit, that's just a suggestion)
-      class_attribute :rank_multiplier
-      self.rank_multiplier = 1
-      
-      # Overridden by most subclasses to indicate a multiplier used by the ranking system
-      # to indicate the relative value of each match type, compared to matches of other types.
-      # This is used as an exponential multiplier to make results that match multiple terms score much higher.
-      # Defaults to 1.0, which is a very low value, and should be a float in the range of about 1.0 or 2.0 or so.
-      # (as a multiplier there isn't technically a limit, that's just a suggestion)
-      class_attribute :term_multiplier
-      self.term_multiplier = 1.0
-      
+
       def self.find_attributes
         if matcher_attribute.kind_of?(Array)
           [:id, :entries_count, :rank_limit] + matcher_attribute

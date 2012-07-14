@@ -1,62 +1,82 @@
 require File.expand_path(File.dirname(__FILE__) + '/../spec_helper')
 
-describe Search::Index do 
+describe IndexedSearch::Index do
   before(:each) do
-    @sg = Eve::Subgroup.create!(:group => Eve::Group.create)
-    @i1 = Eve::Item.create!(:subgroup => @sg, :name => 'first one',  :description => 'test first item') { |i| i.id = 1 }
-    @i2 = Eve::Item.create!(:subgroup => @sg, :name => 'second one', :description => 'test second two') { |i| i.id = 2 }
-    @r1 = Eve::Race.create!(:name => 'first race', :description => 'test race description') { |r| r.id = 1 }
-    Eve::Item.extend Search::Index
-    Eve::Race.extend Search::Index
-    Eve::Item.create_search_index
-    Eve::Race.create_search_index
+    @e = IndexedSearch::Entry
+    @q = IndexedSearch::Query
+    @f1 = create(:foo, :name => 'first one',  :description => 'test first foo')
+    @f2 = create(:foo, :name => 'second one', :description => 'test second two')
+    @b1 = create(:bar, :name => 'first bar', :foo => @f1)
+    @b2 = create(:bar, :name => 'second bar')
+    Foo.create_search_index
+    Bar.create_search_index
   end
-  
-  describe 'values' do
-    it('model')   { Search::Entry.first.model.should                      == @i1 }
-    it('models')  { Eve::Race.search_entries.models.should                == [@r1, @r1, @r1, @r1, @r1] }
-    it('find1')   { Search::Entry.find_results(Search::Query.new('one two'), 25).models.should      == [@i2, @i1] }
-    it('find2')   { Search::Entry.find_results(Search::Query.new('first test'), 25).models.should   == [@r1, @i1, @i2] }
-    it('find3')   { Search::Entry.find_results(Search::Query.new('first test'), 2).models.should    == [@r1, @i1] }
-    it('find4')   { Search::Entry.find_results(Search::Query.new('first test'), 2, 2).models.should == [@i2] }
-    it('find5')   { Search::Entry.find_results(Search::Query.new('notfound'), 25).should            == [] }
-    it('find6')   { Eve::Item.search_entries.find_results(Search::Query.new('first test one'), 25).models.should == [@i1, @i2] }
-    it('find7')   { Search::Entry.find_results(Search::Query.new('descr'), 2).models.should         == [@r1] }
-    it('find8')   { Search::Entry.find_results(Search::Query.new('descriptions'), 2).models.should  == [@r1] }
-    it('find9')   { Search::Entry.find_results(Search::Query.new('racu'), 2).models.should          == [@r1] }
-    it('find10')  { Search::Entry.find_results(Search::Query.new('raced'), 2).models.should         == [@r1] }
-    it('count1')  { Search::Entry.count_results(Search::Query.new('one two')).should         == 2 }
-    it('count2')  { Search::Entry.count_results(Search::Query.new('first test')).should      == 3 }
-    it('count3')  { Search::Entry.count_results(Search::Query.new('notfound')).should        == 0 }
-  end
-  
-  describe '' do
-    before(:each) { @i1.name = 'yet again' }
 
-    describe 'model update' do
-      before(:each) { @i1.save! }
-      describe 'simple' do
-        before(:each) { Eve::Item.update_search_index }
-        it('find1')   { Search::Entry.find_results(Search::Query.new('first test'), 25).models.should   == [@r1, @i1, @i2] }
-        it('find2')   { Search::Entry.find_results(Search::Query.new('one two'), 25).models.should      == [@i2] }
-        it('find3')   { Search::Entry.find_results(Search::Query.new('again'), 25).models.should        == [@i1] }
-        it('find4')   { Eve::Item.search_entries.find_results(Search::Query.new('first test one'), 25).models.should == [@i2, @i1] }
-      end
-      #describe 'with row removal' do
-      #  before(:each) { @i2.destroy; Eve::Item.update_search_index }
-      #  it('find1')   { Search::Entry.find_results(Search::Query.new('first test'), 25).models.should   == [@r1, @i1] }
-      #  it('find2')   { Search::Entry.find_results(Search::Query.new('one two'), 25).should             == [] }
-      #  it('find3')   { Search::Entry.find_results(Search::Query.new('again'), 25).models.should        == [@i1] }
-      #  it('find4')   { Eve::Item.search_entries.find_results(Search::Query.new('first test one'), 25).models.should == [@i1] }
-      #end
+  context 'values' do
+    it('model')   { @e.first.model.should                      == @f1 }
+    it('models')  { Bar.search_entries.models.should           == [@b1, @b1, @b1, @b2, @b2] }
+    it('find1')   { @e.find_results(@q.new('one two'), 25).models.should      == [@f2, @f1, @b1] }
+    it('find2')   { @e.find_results(@q.new('first test'), 25).models.should   == [@f1, @b1, @f2] }
+    it('find3')   { @e.find_results(@q.new('first test'), 2).models.should    == [@f1, @b1] }
+    it('find4')   { @e.find_results(@q.new('first test'), 2, 2).models.should == [@f2] }
+    it('find5')   { @e.find_results(@q.new('notfound'), 25).should            == [] }
+    it('find6')   { Foo.search_entries.find_results(@q.new('first test one'), 25).models.should == [@f1, @f2] }
+    it('find7')   { @e.find_results(@q.new('ba'), 2).models.should            == [@b1, @b2] }
+    it('find8')   { @e.find_results(@q.new('bars'), 2).models.should          == [@b1, @b2] }
+    it('find9')   { @e.find_results(@q.new('bara'), 2).models.should          == [@b1, @b2] }
+    it('find10')  { @e.find_results(@q.new('barred'), 2).models.should        == [@b1, @b2] }
+    it('count1')  { @e.count_results(@q.new('one two')).should         == 3 }
+    it('count2')  { @e.count_results(@q.new('first test')).should      == 3 }
+    it('count3')  { @e.count_results(@q.new('notfound')).should        == 0 }
+  end
+
+  context 'updating' do
+    before(:each) do
+      @f1.name = 'yet again'
+      @b1.name = 'another'
     end
 
-    describe 'row update' do
-      before(:each) { @i1.update_search_index }
-      it('find1')   { Search::Entry.find_results(Search::Query.new('first test'), 25).models.should   == [@r1, @i1, @i2] }
-      it('find2')   { Search::Entry.find_results(Search::Query.new('one two'), 25).models.should      == [@i2] }
-      it('find3')   { Search::Entry.find_results(Search::Query.new('again'), 25).models.should        == [@i1] }
-      it('find4')   { Eve::Item.search_entries.find_results(Search::Query.new('first test one'), 25).models.should == [@i2, @i1] }
+    context 'saved models' do
+      before(:each) do
+        @f1.save!
+        @b1.save!
+      end
+      context 'normal' do
+        before(:each) do
+          Foo.update_search_index
+          Bar.update_search_index
+        end
+        it('find1')   { @e.find_results(@q.new('first test'), 25).models.should   == [@f1, @f2] }
+        it('find2')   { @e.find_results(@q.new('one two'), 25).models.should      == [@f2] }
+        it('find3')   { @e.find_results(@q.new('again'), 25).models.should        == [@f1, @b1] }
+        it('find4')   { Foo.search_entries.find_results(@q.new('first test one'), 25).models.should == [@f2, @f1] }
+      end
+      context 'after a row removal' do
+        before(:each) do
+          @f2.destroy
+          Foo.update_search_index
+          Bar.update_search_index
+        end
+        it('find1')   { @e.find_results(@q.new('first test'), 25).models.should   == [@f1] }
+        it('find2')   { @e.find_results(@q.new('one two'), 25).should             == [] }
+        it('find3')   { @e.find_results(@q.new('again'), 25).models.should        == [@f1, @b1] }
+        it('find4')   { Foo.search_entries.find_results(@q.new('first test one'), 25).models.should == [@f1] }
+      end
+      context 'via a scope' do
+        before(:each) { Foo.where(:id => @f1.id).update_search_index }
+        it('find1')   { @e.find_results(@q.new('first test'), 25).models.should   == [@b1, @f1, @f2] }
+        it('find2')   { @e.find_results(@q.new('one two'), 25).models.should      == [@f2, @b1] }
+        it('find3')   { @e.find_results(@q.new('again'), 25).models.should        == [@f1] }
+        it('find4')   { Foo.search_entries.find_results(@q.new('first test one'), 25).models.should == [@f2, @f1] }
+      end
+    end
+
+    context 'unsaved row' do
+      before(:each) { @f1.update_search_index }
+      it('find1')   { @e.find_results(@q.new('first test'), 25).models.should   == [@b1, @f1, @f2] }
+      it('find2')   { @e.find_results(@q.new('one two'), 25).models.should      == [@f2, @b1] }
+      it('find3')   { @e.find_results(@q.new('again'), 25).models.should        == [@f1] }
+      it('find4')   { Foo.search_entries.find_results(@q.new('first test one'), 25).models.should == [@f2, @f1] }
     end
 
   end

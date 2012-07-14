@@ -12,7 +12,7 @@ development:
   adapter: mysql2
   encoding: utf8
   reconnect: false
-  database: dummy_development
+  database: indexed_search_dummy_development
   pool: 5
   username: root
   password:
@@ -25,7 +25,7 @@ test:
   adapter: mysql2
   encoding: utf8
   reconnect: false
-  database: dummy_test
+  database: indexed_search_dummy_test
   pool: 5
   username: root
   password:
@@ -35,7 +35,7 @@ production:
   adapter: mysql2
   encoding: utf8
   reconnect: false
-  database: dummy_production
+  database: indexed_search_dummy_production
   pool: 5
   username: root
   password:

@@ -85,12 +85,19 @@ module IndexedSearch
         search_index_scope.includes(:search_entries).each_by_range(100) { |row| row.create_search_index }
       end
       def update_search_index
-        # get rid of indexes for rows that mysteriously no longer exist
-        # (TODO rethink this! This doesn't work for models with a lot of rows, just overflows mysql's query buffer)
-        # and ideally the following line shouldn't be necessary anyway, it's cleaning up someone else's mess
-        #search_entries.not_rowids(search_index_scope.value_of(:id)).delete_all
         # reindex existing rows
         search_index_scope.includes(:search_entries).each_by_range(100) { |row| row.update_search_index }
+        # remove index for model rows that no longer exist
+        search_entries.
+          where(
+            "(" +
+              "SELECT #{table_name}.#{id_for_index_attr} " +
+              "FROM #{table_name} " +
+              "WHERE entries.modelid=#{model_id} AND " +
+                "entries.modelrowid=#{table_name}.#{id_for_index_attr}" +
+            ") IS NULL"
+          ).
+          delete_all
         # cleanup any extra words that are no longer used, when done
         IndexedSearch::Word.delete_extra_words
       end
@@ -133,15 +140,10 @@ module IndexedSearch
     
     module InstanceMethods
       
-      # TODO if the create/update db calls below could be done more directly for multiple entries at once
-      # then they could be way faster!! After all, it's not like there have to be any validations or callbacks
-      # since this is all just internal data by this point...
       def create_search_index
         IndexedSearch::Entry.transaction do
           srch_rnks = collect_search_ranks
-          make_search_insertions(srch_rnks).each do |attrs|
-            IndexedSearch::Entry.create! { |e| attrs.each { |k,v| e[k] = v } }
-          end
+          IndexedSearch::Entry.import(*make_search_insertions(srch_rnks), :validate => false)
           IndexedSearch::Word.incr_counts_by_ids(srch_rnks.keys)
         end
       end
@@ -179,12 +181,7 @@ module IndexedSearch
         # rank_changes += ranks.keys
         unless ranks.blank? && updates.blank? && deletions.blank?
           IndexedSearch::Entry.transaction do
-            # todo: use activerecord-import gem here for speedup
-            unless ranks.blank?
-              make_search_insertions(ranks).each do |attrs|
-                IndexedSearch::Entry.create! { |e| attrs.each { |k,v| e[k] = v } }
-              end
-            end
+            IndexedSearch::Entry.import(*make_search_insertions(ranks), :validate => false) unless ranks.blank?
             unless updates.blank?
               inverted_updates = Hash.new { |h, k| h[k] = [] }
               updates.each { |id, vals| inverted_updates[vals] << id }
@@ -224,7 +221,14 @@ module IndexedSearch
         send self.class.id_for_index_attr
       end
       def make_search_insertions(ranks)
-        ranks.collect { |wid, rnk| {:word_id => wid, :rowidx => ((id_for_index << 8) | model_id), :modelid => model_id, :modelrowid => id_for_index, :rank => rnk, :row_priority => search_priority.round(15)} }
+        id = id_for_index
+        idx = ((id << 8) | model_id)
+        mid = model_id
+        pri = search_priority.round(15)
+        [
+          [:word_id, :rowidx, :modelid, :modelrowid, :rank, :row_priority],
+          ranks.collect { |wid, rnk| [wid, idx, mid, id, rnk, pri] }
+        ]
       end
       
     end # InstanceMethods

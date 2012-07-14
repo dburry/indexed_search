@@ -18,25 +18,25 @@ module IndexedSearch
       #  * queried secondary equals matched secondary.
       self.rank_multiplier = [6,    5,    4,    3]
       self.term_multiplier = [1.14, 1.13, 1.12, 1.11]
-      
+
+      # Only do metaphone for words that contain at least two ascii letters, or are one ascii letter.
+      # This was found to work best through experimentation.
+      self.match_against_term = proc { |term| term.length == 1 && term =~ /^[a-z]$/ || term.length > 1 && term =~ /[a-z].*?[a-z]/ }
+
+      # The default column names to store double metaphone values in are 'primary_metaphone' and 'secondary_metaphone'
+      self.matcher_attribute = [:primary_metaphone, :secondary_metaphone]
+
       # This must never be longer than the database words.primary_metaphone and words.secondary_metaphone columns.
       # You will need to reindex everything after lengthening this (though lowering it only needs shortening db column).
       # The implementation in the text gem cannot ever go bigger than 4 characters!
       cattr_accessor :max_length
       self.max_length = 4
-      
-      
-      # Only do metaphone for words that contain at least two ascii letters, or are one ascii letter.
-      def self.match_against_term?(term)
-        term.length == 1 && term =~ /^[a-z]$/ || term.length > 1 && term =~ /[a-z].*?[a-z]/
-      end
-      
+
       def scope
         @scope.where(@scope.arel_table[self.class.matcher_attribute.first].in(term_map.keys).or(
           @scope.arel_table[self.class.matcher_attribute.last].in(term_map.keys)))
       end
-      self.matcher_attribute = [:primary_metaphone, :secondary_metaphone]
-      
+
       def term_map
         term_maps[0]
       end

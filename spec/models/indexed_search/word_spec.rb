@@ -1,7 +1,7 @@
-require File.expand_path(File.dirname(__FILE__) + '/../spec_helper')
+require File.expand_path(File.dirname(__FILE__) + '/../../spec_helper')
 
-describe Search::Word do
-  before(:each) { @sw = Search::Word }
+describe IndexedSearch::Word do
+  before(:each) { @sw = IndexedSearch::Word }
   describe 'finding/creating' do
     describe 'without pre-existing words' do
       it 'creating with normal word should use soundex' do
@@ -28,8 +28,8 @@ describe Search::Word do
 
     describe 'with pre-existing words' do
       before(:each) do
-        @sw.create!(:word => 'thoughts', :stem => 'thought', :soundex => 'f1') { |sw| sw.id = 1 }
-        @sw.create!(:word => 'those',    :stem => 'those',   :soundex => 'f2') { |sw| sw.id = 2 }
+        create(:word, :word => 'thoughts', :stem => 'thought', :soundex => 'f1', :id => 1)
+        create(:word, :word => 'those',    :stem => 'those',   :soundex => 'f2', :id => 2)
       end
       it 'single find' do
         Set.new(@sw.find_or_create_word_ids(['thoughts'])).should == Set.new([1])
@@ -45,9 +45,9 @@ describe Search::Word do
     end
   end
   
-  describe 'deleting/cleaning up unindexed words' do
+  context 'deleting/cleaning up unindexed words' do
     before(:each) { @ids = @sw.find_or_create_word_ids(['thoughts', 'those', 'going', 'gone']) }
-    describe 'when all words are unindexed' do
+    context 'when all words are unindexed' do
       it 'scope should include all of them' do
         Set.new(@sw.empty_entry).should == Set.new(@sw.find_all_by_id(@ids))
       end
@@ -56,10 +56,10 @@ describe Search::Word do
         Set.new(@sw.all).should == Set.new
       end
     end
-    describe 'when only some are unindexed' do
+    context 'when only some are unindexed' do
       before(:each) do
         @id = @ids.shift # @ids only has unindexed left, after create!
-        Search::Entry.create!(:word_id => @id, :rowidx => 1, :modelid => 1, :modelrowid => 1, :rank => 1) { |sh| sh.id = 1 }
+        create(:entry, :word_id => @id)
       end
       it 'scope should include only some of them' do
         Set.new(@sw.empty_entry).should == Set.new(@sw.find_all_by_id(@ids))

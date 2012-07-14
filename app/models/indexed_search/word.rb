@@ -70,7 +70,9 @@ module IndexedSearch
           end
         end
       end
-      create! { |w| attrs.each { |k,v| w[k] = v } }.id
+      # import would be faster but it doesn't return the id
+      #import(attrs.keys, [attrs.values], :validate => false)
+      create!(attrs, :without_protection => true).id
     end
     
     def self.update_ranks_by_ids(ids)

@@ -16,10 +16,9 @@ module IndexedSearch
       self.term_multiplier = 1.15
       
       # Only do start-with for longer-than-one-letter words, otherwise they match too broadly.
-      def self.match_against_term?(term)
-        term.length > 1
-      end
-      
+      # This was found to work best through experimentation.
+      self.min_term_length = 2
+
       def scope
         @scope.where(@scope.arel_table[self.class.matcher_attribute].matches_any(term_matches.collect { |t| "#{t}%" }))
       end

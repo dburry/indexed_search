@@ -52,11 +52,10 @@ module IndexedSearch
       self.rank_multiplier = 13
       self.term_multiplier =  1.40
       
-      # Only do leet for shorter words, the list of potential matches gets exponentially too large otherwise
-      def self.match_against_term?(term)
-        term.length < 10
-      end
-      
+      # Only do leet for shorter words, the list of potential matches gets exponentially too large otherwise,
+      # and then it takes too long to run on large indexes (seconds instead of milliseconds).
+      self.max_term_length = 9
+
       def scope
         @scope.where(self.class.matcher_attribute => term_map.keys)
       end

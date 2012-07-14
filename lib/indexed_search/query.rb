@@ -21,10 +21,10 @@ module IndexedSearch
     # suitable for any language with:
     #  1) any unicode alpha-numeric character class is considered a word character (requires a recent ruby!)
     #  2) space or any other non-word character between every separate word
-    #  3) one single embedded apostrophe (') allowed inside any word, but not around it
+    #  3) embedded apostrophes (') allowed inside any word, but not around it
     #     (I know, all the apostrophe-at-word-ends will be munged, but they cannot be distinguished from quotes! so...)
     #  4) but no dash or anything else allowed inside a word, that will all indicate separate words
-    # this doen't conform to any technical language word definition, just makes it practical for search term parsing
+    # this doesn't conform to any technical language word definition, just makes it practical for search term parsing
     # this works quite well not only with english, but also with a lot of non-english languages
     # 
     # TODO: some languages will need something different, we'll deal with those as we come to them, for example:
@@ -44,10 +44,10 @@ module IndexedSearch
       if txt.blank?
         []
       elsif txt.class == Array
-        txt.collect { |a| a.blank? ? [] : UnicodeUtils.casefold(a).scan(word_match_regex) }.collect { |w| w[0...IndexedSearch::Word.max_length] }.flatten
+        txt.collect { |a| a.blank? ? [] : UnicodeUtils.casefold(a).scan(word_match_regex) }.flatten
       else
-        UnicodeUtils.casefold(txt).scan(word_match_regex).collect { |w| w[0...IndexedSearch::Word.max_length] }
-      end
+        UnicodeUtils.casefold(txt).scan(word_match_regex)
+      end.collect { |w| w[0...IndexedSearch::Word.max_length] }
     end
     
     # lookup (and cache) word id data on this word query
