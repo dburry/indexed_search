@@ -1,5 +1,12 @@
+require 'rails/engine'
+
 module IndexedSearch
   class Engine < Rails::Engine
+    require 'activerecord-import'
+    require 'each_batched'
+    require 'text'
+    require 'unicode_utils'
+    require 'valium'
 
     # I wish you could do this here...
     #new_observers = Dir[config.root.join('app/indexers/*_indexer.rb')].
