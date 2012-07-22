@@ -13,4 +13,25 @@ describe IndexedSearch::Match::Metaphone do
     it('find6') { find_results_for('think').models.should == [@f1] }
   end
 
+  context 'single letter' do
+    before(:each) { @f1 = create(:indexed_foo, :name => 't') }
+    it('should be found') { find_results_for('t').models.should == [@f1] }
+  end
+  context 'two letters' do
+    before(:each) { @f1 = create(:indexed_foo, :name => 'th') }
+    it('should be found') { find_results_for('th').models.should == [@f1] }
+  end
+  context 'single number' do
+    before(:each) { @f1 = create(:indexed_foo, :name => '1') }
+    it('should not be found') { find_results_for('1').should be_empty }
+  end
+  context 'two numbers' do
+    before(:each) { @f1 = create(:indexed_foo, :name => '12') }
+    it('should not be found') { find_results_for('12').should be_empty }
+  end
+  context 'two letters and a number' do
+    before(:each) { @f1 = create(:indexed_foo, :name => 'th1') }
+    it('should not be found') { find_results_for('th1').models.should == [@f1] }
+  end
+
 end

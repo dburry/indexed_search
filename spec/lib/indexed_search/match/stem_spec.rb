@@ -13,4 +13,11 @@ describe IndexedSearch::Match::Stem do
     it('find6') { find_results_for('think').should be_empty }
   end
 
+  context 'reverse' do
+    before(:each) { @f1 = create(:indexed_foo, :name => 'things') }
+    it('find1') { find_results_for('thin').should be_empty }
+    it('find2') { find_results_for('thing').models.should == [@f1] }
+    it('find3') { find_results_for('things').models.should == [@f1] }
+  end
+
 end
