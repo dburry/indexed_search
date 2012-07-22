@@ -4,8 +4,7 @@ module IndexedSearch
     
     # Performs a word stemming match, using the Porter word stemming algorithm,
     # see: http://tartarus.org/martin/PorterStemmer/  Note the Porter algorithm is designed for English.
-    # Requires the stemmer gem, see: http://stemmer.rubyforge.org/wiki/wiki.pl
-    # or the text gem,
+    # Requires the text gem
     # 
     # Uses a stem column to store a stem with each entry in the IndexedSearch::Word model.
     class Stem < IndexedSearch::Match::Base
@@ -18,24 +17,12 @@ module IndexedSearch
       # Set maximum stem length
       cattr_accessor :max_length
       self.max_length = 64
-      
-      cattr_accessor :implementation
+
+      # TODO: remove this!
       def self.implementation=(what)
-        if what == :stemmer
-          require 'stemmer'
-          class_eval("def self.make_index_value(term); make_index_value_stemmer(term); end")
-        elsif what == :text
-          require 'text'
-          class_eval("def self.make_index_value(term); make_index_value_text(term); end")
-        end
-        @@implementation = what
+        ActiveSupport::Deprecation.warn "IndexedSearch::Match::Stem.implementation no longer does anything and will be removed from future releases.", caller
       end
-      
-      def initialize(scope, terms)
-        super(scope, terms)
-        raise 'Error: stem implementation not chosen' if @@implementation.nil?
-      end
-      
+
       def scope
         @scope.where(self.class.matcher_attribute => term_map.keys)
       end
@@ -60,12 +47,8 @@ module IndexedSearch
         end
       end
       
-      # stem routine, enforces set length too, stemmer gem version
-      def self.make_index_value_stemmer(term)
-        term.stem[0..max_length]
-      end
-      # stem routine, enforces set length too, text gem version
-      def self.make_index_value_text(term)
+      # stem routine, enforces set length too
+      def self.make_index_value(term)
         # TODO figure out how to normalize these to ascii... (they've only been normalized by case)
         Text::PorterStemming.stem(term)[0..max_length]
       end

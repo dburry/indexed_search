@@ -5,8 +5,6 @@ IndexedSearch::Index.models_by_id = {
 }
 
 
-IndexedSearch::Match::Stem.implementation = :text
-
 #new_observers = Dir[Rails.root.join('app/indexers/*_indexer.rb')].
 #  collect { |f| File.basename(f, '.rb') }.
 #  reject { |f| f == 'application_indexer' }

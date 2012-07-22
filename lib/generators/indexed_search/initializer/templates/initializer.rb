@@ -273,10 +273,6 @@ IndexedSearch::Index.models_by_id = {
 #  'z' => ['2']
 #}
 
-# Which gem's API to use for Porter Stemming: stemmer gem or text gem.
-# There is no default, if you use stem matches you must choose one.
-IndexedSearch::Match::Stem.implementation = :text
-
 
 # Add indexers to application observers
 # This could be in application.rb but why make people edit that...
