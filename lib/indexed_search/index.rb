@@ -1,5 +1,6 @@
 
 require 'each_batched'
+require 'activerecord-import'
 
 # 
 # Utility module containing what is needed to index a given model for searching

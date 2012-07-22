@@ -10,13 +10,6 @@ if ENV.has_key?('USE_SIMPLECOV')
   SimpleCov.groups.delete 'Controllers'
 end
 
-# why in the heck can't I seem to get bundler to do this??
-require "text"
-require "unicode_utils"
-require "valium"
-require "each_batched"
-require "activerecord-import"
-
 # set up the dummy rails app
 ENV["RAILS_ENV"] ||= 'test'
 require File.expand_path("../dummy/config/environment.rb",  __FILE__)

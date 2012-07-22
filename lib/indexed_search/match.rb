@@ -1,4 +1,6 @@
 
+require 'valium'
+
 module IndexedSearch
   module Match
     

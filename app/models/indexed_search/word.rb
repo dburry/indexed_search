@@ -1,4 +1,7 @@
 
+require 'valium'
+require 'activerecord-import'
+
 #
 # all the unique words that are indexed
 #

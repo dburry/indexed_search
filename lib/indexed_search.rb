@@ -1,12 +1,11 @@
+
 require 'rails/engine'
+
+# must require this when defining the engine so that its on_load hook works with activerecord
+require 'activerecord-import'
 
 module IndexedSearch
   class Engine < Rails::Engine
-    require 'activerecord-import'
-    require 'each_batched'
-    require 'text'
-    require 'unicode_utils'
-    require 'valium'
 
     # I wish you could do this here...
     #new_observers = Dir[config.root.join('app/indexers/*_indexer.rb')].

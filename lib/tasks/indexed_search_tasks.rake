@@ -1,4 +1,6 @@
 
+require 'valium'
+
 # uses a MODELS environment variable listing specific
 # model names to process, otherwise it does all by default
 

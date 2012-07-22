@@ -1,3 +1,4 @@
+
 require 'valium'
 
 module IndexedSearch

@@ -1,4 +1,6 @@
 
+require 'text'
+
 module IndexedSearch
   module Match
     
