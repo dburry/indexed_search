@@ -1,5 +1,5 @@
 
-require 'text'
+require 'text/metaphone'
 
 module IndexedSearch
   module Match

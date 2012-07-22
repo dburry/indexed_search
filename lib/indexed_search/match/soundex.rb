@@ -1,5 +1,5 @@
 
-require 'text'
+require 'text/soundex'
 
 module IndexedSearch
   module Match

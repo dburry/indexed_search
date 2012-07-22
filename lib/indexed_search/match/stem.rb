@@ -1,4 +1,6 @@
 
+require 'text/porter_stemming'
+
 module IndexedSearch
   module Match
     
