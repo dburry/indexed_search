@@ -2,8 +2,8 @@ require File.expand_path(File.dirname(__FILE__) + '/../../spec_helper')
 
 describe IndexedSearch::Word do
   before(:each) { @sw = IndexedSearch::Word }
-  describe 'finding/creating' do
-    describe 'without pre-existing words' do
+  context 'finding/creating' do
+    context 'without pre-existing words' do
       it 'creating with normal word should use soundex' do
         id = @sw.find_or_create_word_ids(['norm'])
         @sw.find(id)[0].soundex.should == 'N650'
@@ -26,7 +26,7 @@ describe IndexedSearch::Word do
       end
     end
 
-    describe 'with pre-existing words' do
+    context 'with pre-existing words' do
       before(:each) do
         create(:word, :word => 'thoughts', :stem => 'thought', :soundex => 'f1', :id => 1)
         create(:word, :word => 'those',    :stem => 'those',   :soundex => 'f2', :id => 2)
