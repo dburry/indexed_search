@@ -1,23 +1,25 @@
 require File.expand_path(File.dirname(__FILE__) + '/../../../spec_helper')
 
 describe IndexedSearch::Match::StartWith do
-  before(:each) do
-    @e = IndexedSearch::Entry
-    @q = IndexedSearch::Query
-    @f1 = create(:foo, :name => 'thing')
-    Foo.create_search_index
-    @def = IndexedSearch::Match.perform_match_types
-    IndexedSearch::Match.perform_match_types = [:start_with]
-  end
-  after(:each) do
-    IndexedSearch::Match.perform_match_types = @def
+  set_perform_match_type :start_with
+
+  context 'standard' do
+    before(:each) { @f1 = create(:indexed_foo, :name => 'thing') }
+    it('find1') { find_results_for('thin').models.should == [@f1] }
+    it('find2') { find_results_for('thing').models.should == [@f1] }
+    it('find3') { find_results_for('things').should be_empty }
+    it('find4') { find_results_for('th1ng').should be_empty }
+    it('find5') { find_results_for('theng').should be_empty }
+    it('find6') { find_results_for('think').should be_empty }
   end
 
-  it('find1')   { @e.find_results(@q.new('thin'), 25).models.should == [@f1] }
-  it('find2')   { @e.find_results(@q.new('thing'), 25).models.should == [@f1] }
-  it('find3')   { @e.find_results(@q.new('things'), 25).should be_empty }
-  it('find4')   { @e.find_results(@q.new('th1ng'), 25).should be_empty }
-  it('find5')   { @e.find_results(@q.new('theng'), 25).should be_empty }
-  it('find6')   { @e.find_results(@q.new('think'), 25).should be_empty }
+  context 'single letter' do
+    before(:each) { @f1 = create(:indexed_foo, :name => 't') }
+    it('should not be found') { find_results_for('t').should be_empty }
+  end
+  context 'two letters' do
+    before(:each) { @f1 = create(:indexed_foo, :name => 'th') }
+    it('should be found') { find_results_for('th').models.should == [@f1] }
+  end
 
 end

@@ -1,23 +1,16 @@
 require File.expand_path(File.dirname(__FILE__) + '/../../../spec_helper')
 
 describe IndexedSearch::Match::Stem do
-  before(:each) do
-    @e = IndexedSearch::Entry
-    @q = IndexedSearch::Query
-    @f1 = create(:foo, :name => 'thing')
-    Foo.create_search_index
-    @def = IndexedSearch::Match.perform_match_types
-    IndexedSearch::Match.perform_match_types = [:stem]
-  end
-  after(:each) do
-    IndexedSearch::Match.perform_match_types = @def
-  end
+  set_perform_match_type :stem
 
-  it('find1')   { @e.find_results(@q.new('thin'), 25).should be_empty }
-  it('find2')   { @e.find_results(@q.new('thing'), 25).models.should == [@f1] }
-  it('find3')   { @e.find_results(@q.new('things'), 25).models.should == [@f1] }
-  it('find4')   { @e.find_results(@q.new('th1ng'), 25).should be_empty }
-  it('find5')   { @e.find_results(@q.new('theng'), 25).should be_empty }
-  it('find6')   { @e.find_results(@q.new('think'), 25).should be_empty }
+  context 'standard' do
+    before(:each) { @f1 = create(:indexed_foo, :name => 'thing') }
+    it('find1') { find_results_for('thin').should be_empty }
+    it('find2') { find_results_for('thing').models.should == [@f1] }
+    it('find3') { find_results_for('things').models.should == [@f1] }
+    it('find4') { find_results_for('th1ng').should be_empty }
+    it('find5') { find_results_for('theng').should be_empty }
+    it('find6') { find_results_for('think').should be_empty }
+  end
 
 end
