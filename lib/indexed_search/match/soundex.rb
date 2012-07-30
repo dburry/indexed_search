@@ -5,6 +5,7 @@ module IndexedSearch
   module Match
     
     # Does a soundex algorithm comparison to find words that sound similar.  Only works well for English.
+    # Requires the Text gem.
     # 
     # Uses a soundex column to store a soundex value with each entry in the IndexedSearch::Word model.
     class Soundex < IndexedSearch::Match::Base

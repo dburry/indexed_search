@@ -1,9 +1,9 @@
-CREATE TABLE `bar` (
+CREATE TABLE `bars` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `foo_id` int(11) NOT NULL,
   `name` varchar(10) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
-  KEY `index_bar_on_foo_id` (`foo_id`)
+  KEY `index_bars_on_foo_id` (`foo_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE `entries` (
@@ -21,7 +21,7 @@ CREATE TABLE `entries` (
   KEY `index_entries_on_word_id_and_rank` (`word_id`,`rank`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
-CREATE TABLE `foo` (
+CREATE TABLE `foos` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(10) NOT NULL DEFAULT '',
   `description` varchar(20) NOT NULL DEFAULT '',
@@ -43,6 +43,7 @@ CREATE TABLE `words` (
   `soundex` varchar(4) DEFAULT NULL,
   `primary_metaphone` varchar(4) DEFAULT NULL,
   `secondary_metaphone` varchar(4) DEFAULT NULL,
+  `american_soundex` varchar(64) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `index_words_on_word` (`word`),
   KEY `index_words_on_entries_count` (`entries_count`),
@@ -50,9 +51,12 @@ CREATE TABLE `words` (
   KEY `index_words_on_metaphone` (`metaphone`),
   KEY `index_words_on_soundex` (`soundex`),
   KEY `index_words_on_primary_metaphone` (`primary_metaphone`),
-  KEY `index_words_on_secondary_metaphone` (`secondary_metaphone`)
+  KEY `index_words_on_secondary_metaphone` (`secondary_metaphone`),
+  KEY `index_words_on_american_soundex` (`american_soundex`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 INSERT INTO schema_migrations (version) VALUES ('20120712194526');
 
 INSERT INTO schema_migrations (version) VALUES ('20120712194650');
+
+INSERT INTO schema_migrations (version) VALUES ('20120729095500');

@@ -4,17 +4,16 @@
 # set IndexedSearch::Match.perform_match_types so that only certain match types are run
 # then restore it back to default after test
 def set_perform_match_types(types)
-  before(:each) do
-    @default_perform_match_types = IndexedSearch::Match.perform_match_types
-    IndexedSearch::Match.perform_match_types = types
-  end
-  after(:each) do
-    IndexedSearch::Match.perform_match_types = @default_perform_match_types
-  end
+  set_nested_global('indexed_search/match', :perform_match_types, types)
 end
 
 # set IndexedSearch::Match.perform_match_types so that only a certain match type is run
 # then restore it back to default after test
 def set_perform_match_type(type)
-  set_perform_match_types([type])
+  set_nested_global('indexed_search/match', :perform_match_types, [type])
+end
+
+# set IndexedSearch::Match::<matcher>.max_length for a given section
+def set_matcher_max_length(matcher, length)
+  set_nested_global("indexed_search/match/#{matcher}", :max_length, length)
 end
