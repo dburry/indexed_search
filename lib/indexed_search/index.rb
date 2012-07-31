@@ -114,8 +114,8 @@ module IndexedSearch
         IndexedSearch::Entry.where(:modelid => model_id)
       end
       def model_id
-        #IndexedSearch::Index.models_by_id.invert[self] or (require 'debugger'; debugger )
-        IndexedSearch::Index.models_by_id.detect {|k,v| v.name == self.name }.first
+        #IndexedSearch::Index.models_by_id.invert[self]
+        IndexedSearch::Index.models_by_id.detect {|k,v| v.name == self.name || v.descendants.collect(&:name).include?(self.name) }.first
       end
       
       # The column from your indexed model that will be stored in the Entry model's modelrowid attribute.
