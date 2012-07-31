@@ -131,7 +131,11 @@ module IndexedSearch
     scope(:empty_entry, {:conditions => 'NOT EXISTS (SELECT * FROM entries WHERE entries.word_id=words.id)'})
     def self.delete_extra_words
       empty_entry.delete_all
-      connection.execute("ALTER TABLE words AUTO_INCREMENT = 1") if count == 0
+      reset_auto_imcrement
+    end
+    # TODO: move this into a supporting library that adds it to activerecord somewhere?
+    def self.reset_auto_increment
+      connection.execute("ALTER TABLE entries AUTO_INCREMENT = 1") if count == 0
     end
 
     def to_s

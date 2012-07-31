@@ -61,8 +61,17 @@ namespace :indexed_search do
   desc "Redo existing live indexes in-place, with no down time"
   task :update => [:environment, 'indexed_search:internal:init', 'indexed_search:internal:update']
 
-  desc "Delete existing indexes"
+  desc "Delete existing indexes (can be scoped to just certain models)"
   task :delete => [:environment, 'indexed_search:internal:init', 'indexed_search:internal:delete']
+
+  desc "Delete all indexes entirely (quickly, without caring what's in them')"
+  task :clear => :environment do
+    puts "Deleting all indexes..."
+    IndexedSearch::Entry.delete_all
+    IndexedSearch::Entry.reset_auto_increment
+    IndexedSearch::Word.delete_all
+    IndexedSearch::Word.reset_auto_increment
+  end
 
   desc "When shortening indexed word lengths, de-duplicate and merge any indexes (site must be down for maintenance, and must migrate to shorter after)"
   task :merge_shortened_duplicates => :environment do
