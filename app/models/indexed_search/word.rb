@@ -131,7 +131,7 @@ module IndexedSearch
     scope(:empty_entry, {:conditions => 'NOT EXISTS (SELECT * FROM entries WHERE entries.word_id=words.id)'})
     def self.delete_extra_words
       empty_entry.delete_all
-      reset_auto_imcrement
+      reset_auto_increment
     end
     # TODO: move this into a supporting library that adds it to activerecord somewhere?
     def self.reset_auto_increment
