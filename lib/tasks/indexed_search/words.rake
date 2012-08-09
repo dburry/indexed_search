@@ -1,4 +1,7 @@
 
+# more advanced stuff for maintaining your index, as you change certain configurations
+# this is stuff that mainly affects the words table in the index
+
 namespace :indexed_search do
   namespace :words do
 
@@ -22,6 +25,13 @@ namespace :indexed_search do
         end
       end
       puts "Merged duplicates"
+    end
+
+    desc "When changing IndexedSearch::Word.rank_reduction_factor run this!"
+    task :update_ranks => :environment do
+      puts "Updating words.rank_limit column..."
+      IndexedSearch::Word.update_ranks
+      puts "Done."
     end
 
   end
