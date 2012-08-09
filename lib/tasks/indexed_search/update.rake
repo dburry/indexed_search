@@ -39,9 +39,16 @@ namespace :indexed_search do
 
     # erase indexes for models
     task :delete do
-      indexed_search_get_models.each do |mdl|
-        puts "Erasing index for #{mdl.table_name}..."
-        mdl.delete_search_index
+      if ENV.has_key?('MODELS')
+        indexed_search_get_models.each do |mdl|
+          puts "Erasing index for #{mdl.table_name}..."
+          mdl.delete_search_index
+        end
+      else
+        # more efficient to truncate, if we don't need to do a partial delete...
+        puts "Truncating all index tables..."
+        IndexedSearch::Entry.truncate_table
+        IndexedSearch::Word.truncate_table
       end
     end
 
@@ -61,13 +68,9 @@ namespace :indexed_search do
   desc "Delete existing indexes (can be scoped to just certain models)"
   task :delete => [:environment, 'indexed_search:internal:init', 'indexed_search:internal:delete']
 
-  desc "Delete all indexes entirely (quickly, without caring what's in them')"
-  task :clear => :environment do
-    puts "Deleting all indexes..."
-    IndexedSearch::Entry.delete_all
-    IndexedSearch::Entry.reset_auto_increment
-    IndexedSearch::Word.delete_all
-    IndexedSearch::Word.reset_auto_increment
+  # TODO: remove this...
+  task :clear do
+    puts "This rake task has been removed.  Use indexed_search:delete (or indexed_search:recreate) instead."
   end
 
 end

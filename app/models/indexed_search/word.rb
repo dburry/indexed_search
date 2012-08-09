@@ -137,6 +137,9 @@ module IndexedSearch
     def self.reset_auto_increment
       connection.execute("ALTER TABLE entries AUTO_INCREMENT = 1") if count == 0
     end
+    def self.truncate_table
+      connection.execute("TRUNCATE TABLE #{table_name}")
+    end
 
     def to_s
       word
