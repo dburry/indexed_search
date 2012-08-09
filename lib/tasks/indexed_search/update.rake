@@ -1,5 +1,5 @@
 
-# rake tasks for creating/deleting/updating the index
+# common rake tasks for creating/deleting/updating the index
 
 namespace :indexed_search do
 
