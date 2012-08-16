@@ -3,7 +3,9 @@ require File.expand_path(File.dirname(__FILE__) + '/../../spec_helper')
 describe IndexedSearch::Word do
   before(:each) { @sw = IndexedSearch::Word }
   context 'finding/creating' do
+
     context 'without pre-existing words' do
+
       it 'creating with normal word should use soundex' do
         id = @sw.find_or_create_word_ids(['norm'])
         @sw.find(id)[0].soundex.should == 'N650'
@@ -24,7 +26,24 @@ describe IndexedSearch::Word do
         id = @sw.find_or_create_word_ids(['1234'])
         @sw.find(id)[0].soundex.should be_nil
       end
-    end
+
+      context 'with concurrency' do
+        before(:each) { @words = ['foo', 'bar', 'baz', 'fee', 'fi', 'fo', 'fum'] }
+        it 'creating a few at once shouldn\'t cause error' do
+          run_concurrency_test(3) { @sw.word_id_map(@words) }
+        end
+        it 'creating a few at once should cause error when done incorrectly' do
+          # this kind of tests that the concurrency test implementation works on this platform too
+          expect do
+            run_concurrency_test(3) do
+              id_map = @sw.existing_word_id_map(@words)
+              @words.reject { |w| id_map.has_key?(w) }.each { |w| @sw.create_word(w) }
+            end
+          end.to raise_error(ActiveRecord::RecordNotUnique)
+        end
+      end
+
+    end # without pre-existing words
 
     context 'with pre-existing words' do
       before(:each) do

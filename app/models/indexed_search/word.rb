@@ -39,19 +39,31 @@ module IndexedSearch
     # Set maximum word length
     cattr_accessor :max_length
     self.max_length = 64
-    
+
+    # maximum number of retries when optimistic creates fail from collisions
+    # after it retries this many times, it will just raise the exception
+    # optimistic non-locking-just-catching-exceptions can't really deadlock
+    # but can get overwhelmed from too much concurrency
+    # so if you get exceptions, that's probably your problem is too much concurrency
+    cattr_accessor :max_collision_retries
+    self.max_collision_retries = 5
+
     # when indexing, the words may or may not exist in the model yet...
     # param: array of word strings
     # returns: array of word model ids (some may be previously existing, some may be brand new)
-    def self.find_or_create_word_ids(words)
-      id_map = existing_word_id_map(words)
-      words.collect { |w| id_map.has_key?(w) ? id_map[w] : create_word(w) }
+    def self.find_or_create_word_ids(words, retry_count=0)
+      retrying_on_word_collision do
+        id_map = existing_word_id_map(words)
+        words.collect { |w| id_map.has_key?(w) ? id_map[w] : create_word(w) }
+      end
     end
     # another version that returns a word->id map hash, instead of just an ids array
-    def self.word_id_map(words)
-      id_map = existing_word_id_map(words)
-      words.reject { |w| id_map.has_key?(w) }.each { |w| id_map[w] = create_word(w) }
-      id_map
+    def self.word_id_map(words, retry_count=0)
+      retrying_on_word_collision do
+        id_map = existing_word_id_map(words)
+        words.reject { |w| id_map.has_key?(w) }.each { |w| id_map[w] = create_word(w) }
+        id_map
+      end
     end
     def self.existing_word_id_map(words)
       id_map = {}
@@ -77,7 +89,20 @@ module IndexedSearch
       #import(attrs.keys, [attrs.values], :validate => false)
       create!(attrs, :without_protection => true).id
     end
-    
+
+    # This implements a kind of optimistic behavior without using any locking
+    #
+    # The word column has a unique index on it at the database level,
+    # so if you try to create the same word twice, the latter one fails with a mysql error.
+    # Use this as a block around such if-exists-get-value-otherwise-create sections, to catch it and retry,
+    # up to max_collision_retries number of retries, then it just gives up and raises error anyway
+    def self.retrying_on_word_collision(retry_count=0)
+      yield
+    rescue ActiveRecord::RecordNotUnique => e
+      raise e.class, 'Too many collisions trying to insert new word', caller if retry_count >= max_collision_retries
+      retrying_on_word_collision(retry_count + 1) { yield }
+    end
+
     def self.update_ranks_by_ids(ids)
       if ids.length == 1
         (cnt, lim) = where(:id => ids).values_of(:entries_count, :rank_limit).first
