@@ -15,8 +15,8 @@ module IndexedSearch
   class Word < ActiveRecord::Base
     has_many :entries, :class_name => 'IndexedSearch::Entry'
 
-    # use collision retrying feature in this model
     extend IndexedSearch::Collision
+    extend IndexedSearch::ResetTable
 
     # limit to only considering this many top ranked matches per each word match
     # this is to limit adverse speed impact of very common words
@@ -139,13 +139,6 @@ module IndexedSearch
     def self.delete_extra_words
       empty_entry.delete_all
       reset_auto_increment
-    end
-    # TODO: move this into a supporting library that adds it to activerecord somewhere?
-    def self.reset_auto_increment
-      connection.execute("ALTER TABLE entries AUTO_INCREMENT = 1") if count == 0
-    end
-    def self.truncate_table
-      connection.execute("TRUNCATE TABLE #{table_name}")
     end
 
     def to_s

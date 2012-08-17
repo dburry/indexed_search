@@ -13,6 +13,8 @@ module IndexedSearch
   class Entry < ActiveRecord::Base
     belongs_to :word, :class_name => 'IndexedSearch::Word'
 
+    extend IndexedSearch::ResetTable
+
     # main entry points for searching database (either whole thing, or scope a limit first)
     # returns results, sorted in ranking order, with pagination support
     # note it actually returns a scope that can be lazily loaded! use #models to convert to actual models
@@ -83,15 +85,7 @@ module IndexedSearch
     def model_type
       @model_type ||= IndexedSearch::Index.models_by_id[modelid]
     end
-    
-    # TODO: move this into a supporting library that adds it to activerecord somewhere?
-    def self.reset_auto_increment
-      connection.execute("ALTER TABLE entries AUTO_INCREMENT = 1") if count == 0
-    end
-    def self.truncate_table
-      connection.execute("TRUNCATE TABLE #{table_name}")
-    end
-    
+
     def to_s
       model.to_s
     end
