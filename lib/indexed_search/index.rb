@@ -74,6 +74,9 @@ require 'activerecord-import'
 module IndexedSearch
   module Index
 
+    class BadModelException < Exception
+    end
+
     # storage for model to id mappings
     mattr_accessor :models_by_id
     self.models_by_id = {}
@@ -114,8 +117,12 @@ module IndexedSearch
         IndexedSearch::Entry.where(:modelid => model_id)
       end
       def model_id
-        #IndexedSearch::Index.models_by_id.invert[self]
-        IndexedSearch::Index.models_by_id.detect {|k,v| v.name == self.name || v.descendants.collect(&:name).include?(self.name) }.first
+        # kind_of? allows both STI and regular Ruby subclasses to work
+        # name.constantize allows rails class reloading to work in development
+        # this is not very efficient and needs rethinking
+        IndexedSearch::Index.models_by_id.detect {|k,v| self.new.kind_of?(v.name.constantize) }.first
+      rescue
+        raise BadModelException.new("#{self.name} does not appear to be an indexed model, see IndexedSearch::Index.models_by_id in config/initializers/indexed_search.rb")
       end
       
       # The column from your indexed model that will be stored in the Entry model's modelrowid attribute.
@@ -245,6 +252,7 @@ module IndexedSearch
     def self.initialize_methods(base)
       base.instance_eval { include IndexedSearch::Index::InstanceMethods }
       base.extend IndexedSearch::Index::ClassMethods
+      raise BadModelException.new("#{base.name} does not appear to be an ActiveRecord model.") unless base.respond_to?(:has_many)
       base.has_many :search_entries, :class_name => 'IndexedSearch::Entry', :foreign_key => :modelrowid, :conditions => proc { {:modelid => base.model_id} }
     end
     
