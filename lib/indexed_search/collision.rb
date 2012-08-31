@@ -20,6 +20,9 @@ module IndexedSearch
 
   module Collision
 
+    class TooManyCollisionsException < Exception
+    end
+
     # maximum number of retries when optimistic creates fail from collisions
     # after it retries this many times, it will just raise the exception
     # optimistic non-locking-just-catching-exceptions can't really deadlock
@@ -42,8 +45,8 @@ module IndexedSearch
     # or something else similar... :)
     def retrying_on_collision(retry_count=0)
       yield
-    rescue ActiveRecord::RecordNotUnique => e
-      raise('Too many collisions when trying to insert') if retry_count >= max_collision_retries
+    rescue ActiveRecord::RecordNotUnique
+      raise TooManyCollisionsException.new('Too many db uniqueness collisions') if retry_count >= max_collision_retries
       retrying_on_collision(retry_count + 1) { yield }
     end
 
