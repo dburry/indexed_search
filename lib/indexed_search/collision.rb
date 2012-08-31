@@ -43,7 +43,7 @@ module IndexedSearch
     def retrying_on_collision(retry_count=0)
       yield
     rescue ActiveRecord::RecordNotUnique => e
-      raise e.class, 'Too many collisions when trying to insert', caller if retry_count >= max_collision_retries
+      raise('Too many collisions when trying to insert') if retry_count >= max_collision_retries
       retrying_on_collision(retry_count + 1) { yield }
     end
 
