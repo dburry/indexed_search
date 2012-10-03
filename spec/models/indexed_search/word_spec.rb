@@ -30,12 +30,12 @@ describe IndexedSearch::Word do
       context 'with concurrency' do
         before(:each) { @words = ['foo', 'bar', 'baz', 'fee', 'fi', 'fo', 'fum'] }
         it 'creating a few at once shouldn\'t cause error' do
-          run_concurrency_test(3) { @sw.word_id_map(@words) }
+          run_concurrency_test(15) { @sw.word_id_map(@words) }
         end
         it 'creating a few at once should cause error when done incorrectly' do
           # this kind of tests that the concurrency test implementation works on this platform too
           expect do
-            run_concurrency_test(3) do
+            run_concurrency_test(15) do
               id_map = @sw.existing_word_id_map(@words)
               @words.reject { |w| id_map.has_key?(w) }.each { |w| @sw.create_word(w) }
             end

@@ -13,7 +13,7 @@ development:
   encoding: utf8
   reconnect: false
   database: indexed_search_dummy_development
-  pool: 5
+  pool: 15
   username: root
   password:
   socket: /var/run/mysqld/mysqld.sock
@@ -26,7 +26,7 @@ test:
   encoding: utf8
   reconnect: false
   database: indexed_search_dummy_test
-  pool: 5
+  pool: 15
   username: root
   password:
   socket: /var/run/mysqld/mysqld.sock
@@ -36,7 +36,7 @@ production:
   encoding: utf8
   reconnect: false
   database: indexed_search_dummy_production
-  pool: 5
+  pool: 15
   username: root
   password:
   socket: /var/run/mysqld/mysqld.sock

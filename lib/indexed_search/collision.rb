@@ -30,7 +30,7 @@ module IndexedSearch
     # so if you get exceptions, that's probably your problem is too much concurrency
     # in testing it seems pretty unlikely to happen (more likely to crash the machine first)
     mattr_accessor :max_collision_retries
-    self.max_collision_retries = 5
+    self.max_collision_retries = 3
 
     # usage like this:
     #
@@ -47,6 +47,8 @@ module IndexedSearch
       yield
     rescue ActiveRecord::RecordNotUnique
       raise TooManyCollisionsException.new('Too many db uniqueness collisions') if retry_count >= max_collision_retries
+      # random sleep from 0-100 ms makes collisions MUCH more likely to resolve themselves on their own
+      sleep(rand(100) / 1000.0)
       retrying_on_collision(retry_count + 1) { yield }
     end
 
