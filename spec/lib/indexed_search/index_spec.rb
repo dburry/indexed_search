@@ -90,6 +90,57 @@ describe IndexedSearch::Index do
 
     end
 
+    context 'and new data' do
+      before(:each) { @f3 = create(:foo, :name => 'first first', :description => 'test first foo') }
+      context 'creating row index' do
+        before(:each) { @f3.create_search_index }
+        it('find1') { @e.find_results(@q.new('first test'), 25).models.should == [@f3, @f1, @b1, @f2] }
+        it('find2') { @e.find_results(@q.new('one two'), 25).models.should    == [@f2, @f1, @b1] }
+      end
+    end
+    context 'and deleted row' do
+      before(:each) { @f1.delete_search_index }
+      it('find1') { @e.find_results(@q.new('first test'), 25).models.should == [@b1, @f2] }
+      it('find2') { @e.find_results(@q.new('one two'), 25).models.should    == [@f2, @b1] }
+
+      context 'and recreated row' do
+        before(:each) { @f1.create_search_index }
+        it('find1') { @e.find_results(@q.new('first test'), 25).models.should == [@f1, @b1, @f2] }
+        it('find2') { @e.find_results(@q.new('one two'), 25).models.should    == [@f2, @f1, @b1] }
+      end
+      context 'and reloaded and recreated row' do
+        before(:each) { @f1.reload }
+        before(:each) { @f1.create_search_index }
+        it('find1') { @e.find_results(@q.new('first test'), 25).models.should == [@f1, @b1, @f2] }
+        it('find2') { @e.find_results(@q.new('one two'), 25).models.should    == [@f2, @f1, @b1] }
+      end
+      context 'and refound and recreated row' do
+        before(:each) { @f1 = Foo.where(:name => 'first one').first }
+        before(:each) { @f1.create_search_index }
+        it('find1') { @e.find_results(@q.new('first test'), 25).models.should == [@f1, @b1, @f2] }
+        it('find2') { @e.find_results(@q.new('one two'), 25).models.should    == [@f2, @f1, @b1] }
+      end
+
+      context 'and reupdated row' do
+        before(:each) { @f1.update_search_index }
+        it('find1') { @e.find_results(@q.new('first test'), 25).models.should == [@f1, @b1, @f2] }
+        it('find2') { @e.find_results(@q.new('one two'), 25).models.should    == [@f2, @f1, @b1] }
+      end
+      context 'and reloaded and reupdated row' do
+        before(:each) { @f1.reload }
+        before(:each) { @f1.update_search_index }
+        it('find1') { @e.find_results(@q.new('first test'), 25).models.should == [@f1, @b1, @f2] }
+        it('find2') { @e.find_results(@q.new('one two'), 25).models.should    == [@f2, @f1, @b1] }
+      end
+      context 'and refound and reupdated row' do
+        before(:each) { @f1 = Foo.where(:name => 'first one').first }
+        before(:each) { @f1.update_search_index }
+        it('find1') { @e.find_results(@q.new('first test'), 25).models.should == [@f1, @b1, @f2] }
+        it('find2') { @e.find_results(@q.new('one two'), 25).models.should    == [@f2, @f1, @b1] }
+      end
+
+    end
+
   end
 
   context 'defining' do

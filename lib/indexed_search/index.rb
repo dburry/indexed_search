@@ -210,7 +210,8 @@ module IndexedSearch
       end
       def delete_search_index
         IndexedSearch::Entry.transaction do
-          search_entries.delete_all
+          # note: delete_all is an alias for clear, and uses dependent setting on association
+          search_entries.clear
         end
       end
       
@@ -253,7 +254,7 @@ module IndexedSearch
       base.instance_eval { include IndexedSearch::Index::InstanceMethods }
       base.extend IndexedSearch::Index::ClassMethods
       raise BadModelException.new("#{base.name} does not appear to be an ActiveRecord model.") unless base.respond_to?(:has_many)
-      base.has_many :search_entries, :class_name => 'IndexedSearch::Entry', :foreign_key => :modelrowid, :conditions => proc { {:modelid => base.model_id} }
+      base.has_many :search_entries, :class_name => 'IndexedSearch::Entry', :foreign_key => :modelrowid, :conditions => proc { {:modelid => base.model_id} }, :dependent => :delete_all
     end
     
   end
