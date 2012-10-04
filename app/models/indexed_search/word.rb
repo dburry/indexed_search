@@ -135,11 +135,12 @@ module IndexedSearch
     # cleanup after reindexing/deleting from main index
     # doesn't hurt index for extra words to hang around, just wastes space
     # also resets auto increment if the entire database is purged
-    scope(:empty_entry, {:conditions => 'NOT EXISTS (SELECT * FROM entries WHERE entries.word_id=words.id)'})
-    def self.delete_extra_words
+    def self.delete_orphaned
       empty_entry.delete_all
       reset_auto_increment
     end
+    # scope used by delete_orphaned
+    scope :empty_entry, {:conditions => 'NOT EXISTS (SELECT * FROM entries WHERE entries.word_id=words.id)'}
 
     def to_s
       word

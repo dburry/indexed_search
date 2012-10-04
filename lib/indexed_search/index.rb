@@ -103,12 +103,12 @@ module IndexedSearch
           ).
           delete_all
         # cleanup any extra words that are no longer used, when done
-        IndexedSearch::Word.delete_extra_words
+        IndexedSearch::Word.delete_orphaned
       end
       def delete_search_index
         search_entries.delete_all
         IndexedSearch::Entry.reset_auto_increment
-        IndexedSearch::Word.delete_extra_words
+        IndexedSearch::Word.delete_orphaned
         IndexedSearch::Word.update_ranks
         IndexedSearch::Word.update_counts
       end
@@ -158,7 +158,7 @@ module IndexedSearch
       end
       # updates and deletes are often called in a loop to manipulate multiple rows at once
       # it's recommended at the end of the whole loop, call this to keep index clean:
-      # IndexedSearch::Word.delete_extra_words, just as the class-level versions above do
+      # IndexedSearch::Word.delete_orphaned, just as the class-level versions above do
       # it's not included here for speed when looping
       def update_search_index
         ranks = collect_search_ranks

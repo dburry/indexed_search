@@ -34,5 +34,19 @@ namespace :indexed_search do
       puts "Done."
     end
 
+    desc "When doing individual model record index deletes, internal cache of how many records have given words is not updated like it is for model-wide index deletes.  Running this rake task periodically can improve ranking and speed when that is done a lot."
+    task :update_counts => :environment do
+      puts "Updating words.entries_count column..."
+      IndexedSearch::Word.update_counts
+      puts "Done."
+    end
+
+    desc "When doing individual model record index updates/deletes, orphaned words that are no longer used are not cleaned up like they are for model-wide index updates/deletes.  Running this rake task periodically can save some space when that is done a lot."
+    task :delete_orphaned => :environment do
+      puts "Deleting orphaned words that are no longer in use..."
+      IndexedSearch::Word.delete_orphaned
+      puts "Done."
+    end
+
   end
 end

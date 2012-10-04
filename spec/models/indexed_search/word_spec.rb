@@ -71,7 +71,7 @@ describe IndexedSearch::Word do
         Set.new(@sw.empty_entry).should == Set.new(@sw.find_all_by_id(@ids))
       end
       it 'delete should remove all of them' do
-        @sw.delete_extra_words
+        @sw.delete_orphaned
         Set.new(@sw.all).should == Set.new
       end
     end
@@ -84,7 +84,7 @@ describe IndexedSearch::Word do
         Set.new(@sw.empty_entry).should == Set.new(@sw.find_all_by_id(@ids))
       end
       it 'delete should remove only some of them' do
-        @sw.delete_extra_words
+        @sw.delete_orphaned
         Set.new(@sw.all).should == Set.new([@sw.find_by_id(@id)])
       end
     end
