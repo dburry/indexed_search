@@ -109,8 +109,8 @@ module IndexedSearch
         search_entries.delete_all
         IndexedSearch::Entry.reset_auto_increment
         IndexedSearch::Word.delete_orphaned
-        IndexedSearch::Word.update_ranks
         IndexedSearch::Word.update_counts
+        IndexedSearch::Word.update_ranks
       end
       
       def search_entries
