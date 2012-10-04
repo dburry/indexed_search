@@ -119,7 +119,7 @@ module IndexedSearch
       def model_id
         # kind_of? allows both STI and regular Ruby subclasses to work
         # name.constantize allows rails class reloading to work in development
-        # this is not very efficient and needs rethinking
+        # todo: this is not very efficient and needs rethinking
         IndexedSearch::Index.models_by_id.detect {|k,v| self.new.kind_of?(v.name.constantize) }.first
       rescue
         raise BadModelException.new("#{self.name} does not appear to be an indexed model, see IndexedSearch::Index.models_by_id in config/initializers/indexed_search.rb")
