@@ -142,6 +142,12 @@ module IndexedSearch
     # scope used by delete_orphaned
     scope :empty_entry, {:conditions => 'NOT EXISTS (SELECT * FROM entries WHERE entries.word_id=words.id)'}
 
+    # faster version of delete_orphaned that depends on the entries_count column being up to date
+    def self.delete_empty
+      where(:entries_count => 0).delete_all
+      reset_auto_increment
+    end
+
     def to_s
       word
     end

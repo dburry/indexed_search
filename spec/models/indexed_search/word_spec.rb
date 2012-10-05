@@ -70,9 +70,13 @@ describe IndexedSearch::Word do
       it 'scope should include all of them' do
         Set.new(@sw.empty_entry).should == Set.new(@sw.find_all_by_id(@ids))
       end
-      it 'delete should remove all of them' do
+      it 'delete orphaned should remove all of them' do
         @sw.delete_orphaned
-        Set.new(@sw.all).should == Set.new
+        @sw.all.should be_empty
+      end
+      it 'delete empty should remove all of them' do
+        @sw.delete_empty
+        @sw.all.should be_empty
       end
     end
     context 'when only some are unindexed' do
@@ -81,11 +85,24 @@ describe IndexedSearch::Word do
         create(:entry, :word_id => @id)
       end
       it 'scope should include only some of them' do
+        @sw.empty_entry.count.should > 1
+        @sw.empty_entry.count.should < @sw.count
         Set.new(@sw.empty_entry).should == Set.new(@sw.find_all_by_id(@ids))
       end
       it 'delete should remove only some of them' do
         @sw.delete_orphaned
-        Set.new(@sw.all).should == Set.new([@sw.find_by_id(@id)])
+        @sw.count.should == 1
+        @sw.all.should == [@sw.find_by_id(@id)]
+      end
+      it 'delete empty without updating counts should still remove all of them' do
+        @sw.delete_empty
+        @sw.all.should be_empty
+      end
+      it 'delete empty with updating counts should only remove some of them' do
+        @sw.update_counts
+        @sw.delete_empty
+        @sw.count.should == 1
+        @sw.all.should == [@sw.find_by_id(@id)]
       end
     end
   end

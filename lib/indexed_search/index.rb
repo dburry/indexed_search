@@ -108,8 +108,8 @@ module IndexedSearch
       def delete_search_index
         search_entries.delete_all
         IndexedSearch::Entry.reset_auto_increment
-        IndexedSearch::Word.delete_orphaned
         IndexedSearch::Word.update_counts
+        IndexedSearch::Word.delete_empty
         IndexedSearch::Word.update_ranks
       end
       
