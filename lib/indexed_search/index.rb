@@ -86,11 +86,11 @@ module IndexedSearch
       # uses some alternate more complicated/fragile queries to avoid loading entire table into memory!
       # beware that you shouldn't add/remove rows concurrently while updating...
       def create_search_index
-        search_index_scope.includes(:search_entries).each_by_range(100) { |row| row.create_search_index }
+        search_index_scope.includes(:search_entries).each_by_ids(700) { |row| row.create_search_index }
       end
       def update_search_index
         # reindex existing rows
-        search_index_scope.includes(:search_entries).each_by_range(100) { |row| row.update_search_index }
+        search_index_scope.includes(:search_entries).each_by_ids(700) { |row| row.update_search_index }
         # remove index for model rows that no longer exist
         search_entries.
           where(
