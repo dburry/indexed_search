@@ -27,6 +27,7 @@ namespace :indexed_search do
         puts "Indexing #{mdl.table_name}..."
         mdl.create_search_index
       end
+      IndexedSearch::Word.update_ranks
     end
 
     # reindex existing model indexes in-place
@@ -35,6 +36,7 @@ namespace :indexed_search do
         puts "Reindexing #{mdl.table_name}..."
         mdl.update_search_index
       end
+      IndexedSearch::Word.update_ranks
     end
 
     # erase indexes for models
