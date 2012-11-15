@@ -51,6 +51,9 @@ IndexedSearch::Index.models_by_id = {
 # :stem       - Performs a word stemming match, using the Porter word stemming algorithm,
 #               see: http://tartarus.org/martin/PorterStemmer/  Note the Porter algorithm is designed for English.
 #               Requires the stemmer or text gem, see: http://stemmer.rubyforge.org/wiki/wiki.pl
+# :american_soundex - Does the "american soundex" variation of the soundex algorithm comparison to find words
+#               that sound similar.  Only works well for English.  Supports long keys and more tolerant of
+#               unicode similar to how MySQL's SOUNDEX() function works...
 # :metaphone  - see: http://en.wikipedia.org/wiki/Metaphone
 # :start_with - Does a start-with comparison to find words whose beginning part is equal to the given terms.
 #               In concept it's kind of like a nice lowest-common-denominator stemmer for all languages.
@@ -62,8 +65,9 @@ IndexedSearch::Index.models_by_id = {
 
 
 # What types of matching algorithms to consider when building an index.  Some algorithms need an extra column in
-# the word list table of the index (:stem, :metaphone, :soundex, :double_metaphone currently).  Note adding to
-# this will require rebuilding the whole index.
+# the word list table of the index (:stem, :metaphone, :soundex, :double_metaphone currently).  Note: adding to
+# this will require running "rake indexed_search:words:update_matchers" on the new ones, or rebuilding the whole
+# index.
 # 
 #IndexedSearch::Word.index_match_types = [:stem, :metaphone, :soundex, :double_metaphone]
 
@@ -71,7 +75,7 @@ IndexedSearch::Index.models_by_id = {
 # Limit so searches only consider this many top-ranked matches per each word match in the index.
 # This is to limit adverse speed impact of very common words.
 # For best speed tune this via experimentation to be as low as you can, and still give you good results.
-# Note: words.rank_limit column needs to be rebuilt (with #update_ranks) to take advantage of any changes to this
+# Note: when changing this run "rake indexed_search:words:update_ranks" or rebuild the whole index
 #
 #IndexedSearch::Word.rank_reduction_factor = 1200
 
@@ -79,7 +83,7 @@ IndexedSearch::Index.models_by_id = {
 # Don't drop entries due to rank_reduction_factor, if their rank is at or above this rank
 # set this lower to limit the carnage rank_reduction_factor can cause to some really-common-but-important words
 # of course at the expense to some increased time for those words...
-# in practice this is pretty ineffectual to use, because even unimportant words are used in important
+# In practice this is pretty ineffectual to use, because even unimportant words are used in important
 # contexts, making them slow your search to a crawl if you reduce it by much
 #
 #IndexedSearch::Word.min_rank_reduction = 120
@@ -88,7 +92,8 @@ IndexedSearch::Index.models_by_id = {
 # Set maximum length of words to be indexed.  Anything longer than this will be truncated before indexing.
 # Ideally words.word table column should match this (and must not be shorter than this)
 # Lengthening this requires rebuilding the whole database
-# Shortening could use db to truncate, except any duplicates must be removed first!
+# Shortening could use db migration to truncate, except any duplicates must be removed first
+# (to do that see: "rake indexed_search:words:merge_shortened_dups")
 #
 #IndexedSearch::Word.max_length = 64
 
@@ -169,6 +174,9 @@ IndexedSearch::Index.models_by_id = {
 #IndexedSearch::Match::Stem.matches_reduction_factor            =  50
 #IndexedSearch::Match::Stem.limit_reduction_factor              = 200
 #IndexedSearch::Match::Stem.type_reduction_factor               = 100
+#IndexedSearch::Match::AmericanSoundex.matches_reduction_factor =  50
+#IndexedSearch::Match::AmericanSoundex.limit_reduction_factor   = 200
+#IndexedSearch::Match::AmericanSoundex.type_reduction_factor    = 100
 #IndexedSearch::Match::Metaphone.matches_reduction_factor       =  50
 #IndexedSearch::Match::Metaphone.limit_reduction_factor         = 200
 #IndexedSearch::Match::Metaphone.type_reduction_factor          = 100
@@ -192,6 +200,7 @@ IndexedSearch::Index.models_by_id = {
 #IndexedSearch::Match::Exact.rank_multiplier      = 130
 #IndexedSearch::Match::Leet.rank_multiplier       =  13
 #IndexedSearch::Match::Stem.rank_multiplier       =  12
+#IndexedSearch::Match::AmericanSoundex.rank_multiplier = 10
 #IndexedSearch::Match::Metaphone.rank_multiplier  =  10
 #IndexedSearch::Match::StartWith.rank_multiplier  =   8
 #IndexedSearch::Match::Soundex.rank_multiplier    =   1
@@ -213,6 +222,7 @@ IndexedSearch::Index.models_by_id = {
 #IndexedSearch::Match::Exact.term_multiplier      = 1.90
 #IndexedSearch::Match::Leet.term_multiplier       = 1.40
 #IndexedSearch::Match::Stem.term_multiplier       = 1.30
+#IndexedSearch::Match::AmericanSoundex.term_multiplier = 1.23
 #IndexedSearch::Match::Metaphone.term_multiplier  = 1.20
 #IndexedSearch::Match::StartWith.term_multiplier  = 1.15
 #IndexedSearch::Match::Soundex.term_multiplier    = 1.00
@@ -225,12 +235,13 @@ IndexedSearch::Index.models_by_id = {
 # See: IndexedSearch::Word.index_match_types for more details.
 # Ideally these should match the table column lengths in the migration (they must not be longer than table).
 # If you lengthen these, you must reindex everything.
-# If you shorten these, you must either reindex, or alter the table (which truncates them automatically).
+# If you shorten these, you must either reindex, or alter the table to truncate them.
 # It is unlikely you will ever benefit from setting any of these longer than IndexedSearch::Word.max_length
 # The implementation of soundex and double metaphone in the text gem cannot ever go bigger than 4 characters!
 # (which is why they are set up to be lowest priority, because they match a lot of crap)
 #
 #IndexedSearch::Match::Stem.max_length            = 64
+#IndexedSearch::Match::AmericanSoundex.max_length = 64
 #IndexedSearch::Match::Metaphone.max_length       = 64
 #IndexedSearch::Match::Soundex.max_length         =  4
 #IndexedSearch::Match::DoubleMetaphone.max_length =  4

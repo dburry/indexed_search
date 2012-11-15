@@ -5,7 +5,7 @@
 namespace :indexed_search do
   namespace :words do
 
-    desc "When shortening indexed word lengths, de-duplicate and merge any indexes (site must be down for maintenance, and must migrate to shorter after). A LENGTH parameter is required to specify the new length."
+    desc "When shortening indexed word lengths (see: IndexedSearch::Match::*.max_length), de-duplicate and merge any indexes (site must be down for maintenance, and must migrate to shorter after). A LENGTH parameter is required to specify the new length."
     task :merge_shortened_dups => :environment do
       len = ENV['LENGTH'].to_i
       len > 0 or raise "must specify a LENGTH variable"
@@ -58,6 +58,26 @@ namespace :indexed_search do
     task :delete_orphaned => :environment do
       puts "Deleting orphaned words that are no longer in use..."
       IndexedSearch::Word.delete_orphaned
+      puts "Done."
+    end
+
+    desc "Regenerates matcher column data in words table, scoped with a MATCHERS parameter or all of them."
+    task :update_matchers => :environment do
+      matchers = ENV['MATCHERS'].blank? || ENV['MATCHERS'].strip == 'all' ?
+        IndexedSearch::Word.index_match_types :
+        ENV['MATCHERS'].split(',').collect(&:strip)
+
+      bad_matchers = matchers.reject { |m| IndexedSearch::Match.match_class(m) rescue false }
+      raise "Unknown matchers: #{bad_matchers.join(',')}" unless bad_matchers.empty?
+
+      matchers.each do |matcher|
+        if IndexedSearch::Match.match_class(matcher).matcher_attribute == :word
+          puts "Skipping #{matcher}."
+        else
+          puts "Updating #{matcher}..."
+          IndexedSearch::Match.update_index(matcher)
+        end
+      end
       puts "Done."
     end
 
