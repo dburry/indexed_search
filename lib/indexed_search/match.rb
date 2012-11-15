@@ -10,8 +10,10 @@ module IndexedSearch
     self.perform_match_types = [:exact, :stem, :metaphone, :start_with, :double_metaphone, :soundex]
     
     def self.match_class(type)
-      @@match_class ||= {}
-      @@match_class[type] ||= IndexedSearch::Match.const_get(type.to_s.camelize)
+      # todo: detect whether rails class caching is enabled and conditionally cache here too?
+      #@@match_class ||= {}
+      #@@match_class[type] ||= IndexedSearch::Match.const_get(type.to_s.camelize)
+      IndexedSearch::Match.const_get(type.to_s.camelize)
     end
     
     # Update just the match column for a specific match type
