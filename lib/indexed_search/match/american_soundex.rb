@@ -22,7 +22,7 @@ module IndexedSearch
       # Only do american_soundex for words that contain at least one ascii letter.
       self.match_against_term = proc { |term| term =~ /[a-z]/ }
 
-      # The default column name to store soundex values in is 'soundex'
+      # The default column name to store soundex values in is 'american_soundex'
       # You may want to change it if you're doing multiple soundex variants in the same index.
       self.matcher_attribute = :american_soundex
 
