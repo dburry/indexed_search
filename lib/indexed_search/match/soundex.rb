@@ -14,8 +14,8 @@ module IndexedSearch
       self.rank_multiplier = 1
       self.term_multiplier = 1.0
 
-      # Only do soundex for words that contain more than two ascii letters.
-      self.match_against_term = proc { |term| term.length > 2 && term =~ /[a-z].*?[a-z].*?[a-z]/ }
+      # Only do soundex for words that are only ascii letters, and longer than 2 of them.
+      self.match_against_term = proc { |term| term.length > 2 && term =~ /^[a-z]+$/ }
 
       # The default column name to store soundex values in is 'soundex'
       # You may want to change it if you're doing multiple soundex variants in the same index.
