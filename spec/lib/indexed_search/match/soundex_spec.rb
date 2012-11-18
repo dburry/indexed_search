@@ -83,7 +83,7 @@ describe IndexedSearch::Match::Soundex do
     end
     context 'three letters and a number' do
       before(:each) { @f1 = create(:indexed_foo, :name => 'thi1') }
-      it('should be found') { find_results_for('thi1').models.should == [@f1] }
+      it('should be found') { find_results_for('thi1').should be_empty }
     end
   end
 
