@@ -30,7 +30,7 @@ module IndexedSearch
         matcher_attrs = [matcher_attrs] unless matcher_attrs.kind_of?(Array)
         scope.values_of(*([:id, :word] + matcher_attrs)).each do |id, word, *matches|
           vals = klass.match_against_term?(word) ? klass.make_index_value(word) : [nil] * matcher_attrs.length
-          vals = [vals] * matcher_attrs.lenth unless vals.kind_of?(Array)
+          vals = [vals] * matcher_attrs.length unless vals.kind_of?(Array)
           atrs = {}
           (0...matcher_attrs.length).to_a.each do |idx|
             atrs[matcher_attrs[idx]] = vals[idx] if matches[idx] != vals[idx]
