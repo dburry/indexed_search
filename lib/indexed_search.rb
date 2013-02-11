@@ -2,7 +2,7 @@
 require 'rails/engine'
 
 # must require this when defining the engine so that its on_load hook works with activerecord
-require 'activerecord-import'
+require 'activerecord-import/base'
 
 module IndexedSearch
   class Engine < Rails::Engine
