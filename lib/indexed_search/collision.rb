@@ -17,6 +17,9 @@ module IndexedSearch
   # one key difference: if your generation process is quite expensive, you only have to do it
   # for missing records.  If most of the time records should be found and not need to be
   # generated, then this can give you significant time savings.
+  #
+  # Other potential alternatives (each with other different drawbacks) include:
+  # MySQL's INSERT ON DUPLICATE UPDATE and INSERT IGNORE and ANSI SQL's MERGE
 
   module Collision
 
@@ -28,7 +31,7 @@ module IndexedSearch
     # optimistic non-locking-just-catching-exceptions can't really deadlock
     # when done properly but can might overwhelmed from too much concurrency
     # so if you get exceptions, that's probably your problem is too much concurrency
-    # in testing it seems pretty unlikely to happen (more likely to crash the machine first)
+    # in testing it seems pretty unlikely to happen (you'd consume all cpu/mem/etc first)
     mattr_accessor :max_collision_retries
     self.max_collision_retries = 3
 
