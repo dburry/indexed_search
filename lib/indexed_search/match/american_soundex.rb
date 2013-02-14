@@ -55,7 +55,7 @@ module IndexedSearch
       # our exception is of course the length, and some limited unicode tolerance
       def self.make_index_value(term)
         idx = 0
-        idx += 1 until term[idx] =~ /\A\p{Alpha}\Z/  || idx >= term.size
+        idx += 1 until term[idx] =~ /\A\p{Alpha}\z/  || idx >= term.size
         return nil if idx >= term.size
         value = UnicodeUtils.simple_upcase(term[idx])
         return value if max_length == 1
@@ -69,7 +69,7 @@ module IndexedSearch
             last_code = code
           end
         end
-        value.size < 4 ? value + "000"[0,4-value.size] : value
+        value.ljust(4, '0')
       end
 
     end
