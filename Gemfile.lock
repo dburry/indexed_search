@@ -3,7 +3,7 @@ PATH
   specs:
     indexed_search (0.1.2)
       activerecord-import
-      each_batched
+      each_batched (>= 0.1.2)
       rails (~> 3.0)
       text
       unicode_utils
@@ -33,7 +33,7 @@ GEM
       activesupport (= 3.2.8)
       arel (~> 3.0.2)
       tzinfo (~> 0.3.29)
-    activerecord-import (0.2.11)
+    activerecord-import (0.3.0)
       activerecord (~> 3.0)
       activerecord (~> 3.0)
     activeresource (3.2.8)
@@ -45,9 +45,11 @@ GEM
     addressable (2.3.2)
     arel (3.0.2)
     builder (3.0.4)
+    composite_primary_keys (5.0.9)
+      activerecord (~> 3.2.0, >= 3.2.8)
     database_cleaner (0.9.1)
     diff-lcs (1.1.3)
-    each_batched (0.1.1)
+    each_batched (0.1.2)
       rails (>= 3.0)
       valium
     erubis (2.7.0)
@@ -66,7 +68,7 @@ GEM
       i18n (>= 0.4.0)
       mime-types (~> 1.16)
       treetop (~> 1.4.8)
-    mime-types (1.19)
+    mime-types (1.21)
     multi_json (1.3.7)
     mysql2 (0.3.11)
     polyglot (0.3.3)
@@ -131,6 +133,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  composite_primary_keys
   database_cleaner
   factory_girl_rails
   indexed_search!

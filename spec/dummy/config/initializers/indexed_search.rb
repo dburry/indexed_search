@@ -1,7 +1,9 @@
 
 IndexedSearch::Index.models_by_id = {
   1 => Foo,
-  2 => Bar
+  2 => Bar,
+  3 => Key,
+  4 => Comp
 }
 
 

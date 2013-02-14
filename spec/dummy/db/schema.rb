@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20120729095500) do
+ActiveRecord::Schema.define(:version => 20130214092427) do
 
   create_table "bars", :force => true do |t|
     t.integer "foo_id",                               :null => false
@@ -19,6 +19,17 @@ ActiveRecord::Schema.define(:version => 20120729095500) do
   end
 
   add_index "bars", ["foo_id"], :name => "index_bars_on_foo_id"
+
+  create_table "comps", :force => true do |t|
+    t.integer "id1",                                       :null => false
+    t.integer "id2",                                       :null => false
+    t.integer "idx",                                       :null => false
+    t.string  "name",        :limit => 10, :default => "", :null => false
+    t.string  "description", :limit => 20, :default => "", :null => false
+  end
+
+  add_index "comps", ["id1", "id2"], :name => "index_comps_on_id1_and_id2", :unique => true
+  add_index "comps", ["idx"], :name => "index_comps_on_idx", :unique => true
 
   create_table "entries", :force => true do |t|
     t.integer "word_id",                                    :null => false
@@ -38,6 +49,14 @@ ActiveRecord::Schema.define(:version => 20120729095500) do
     t.string "name",        :limit => 10, :default => "", :null => false
     t.string "description", :limit => 20, :default => "", :null => false
   end
+
+  create_table "keys", :id => false, :force => true do |t|
+    t.integer "idx",                                       :null => false
+    t.string  "name",        :limit => 10, :default => "", :null => false
+    t.string  "description", :limit => 20, :default => "", :null => false
+  end
+
+  add_index "keys", ["idx"], :name => "index_keys_on_idx", :unique => true
 
   create_table "words", :force => true do |t|
     t.string  "word",                :limit => 64,                 :null => false

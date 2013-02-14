@@ -86,19 +86,19 @@ module IndexedSearch
       # uses some alternate more complicated/fragile queries to avoid loading entire table into memory!
       # beware that you shouldn't add/remove rows concurrently while updating...
       def create_search_index
-        search_index_scope.includes(:search_entries).each_by_ids(700) { |row| row.create_search_index }
+        search_index_scope.each_by_ids(700, id_for_index_attr) { |row| row.create_search_index }
       end
       def update_search_index
         # reindex existing rows
-        search_index_scope.includes(:search_entries).each_by_ids(700) { |row| row.update_search_index }
+        search_index_scope.each_by_ids(700, id_for_index_attr) { |row| row.update_search_index }
         # remove index for model rows that no longer exist
         search_entries.
           where(
             "(" +
-              "SELECT #{table_name}.#{id_for_index_attr} " +
-              "FROM #{table_name} " +
-              "WHERE entries.modelid=#{model_id} AND " +
-                "entries.modelrowid=#{table_name}.#{id_for_index_attr}" +
+              "SELECT `#{table_name}`.`#{id_for_index_attr}` " +
+              "FROM `#{table_name}` " +
+              "WHERE `entries`.`modelid`=#{model_id} AND " +
+                "`entries`.`modelrowid`=`#{table_name}`.`#{id_for_index_attr}`" +
             ") IS NULL"
           ).
           delete_all
@@ -210,11 +210,13 @@ module IndexedSearch
       end
       def delete_search_index
         IndexedSearch::Entry.transaction do
-          # note: delete_all is an alias for clear, and uses dependent setting on association
-          search_entries.clear
+          search_entries.delete_all
         end
       end
       
+      def search_entries
+        self.class.search_entries.where(:modelrowid => id_for_index)
+      end
       def model_id
         self.class.model_id
       end
@@ -254,7 +256,6 @@ module IndexedSearch
       base.instance_eval { include IndexedSearch::Index::InstanceMethods }
       base.extend IndexedSearch::Index::ClassMethods
       raise BadModelException.new("#{base.name} does not appear to be an ActiveRecord model.") unless base.respond_to?(:has_many)
-      base.has_many :search_entries, :class_name => 'IndexedSearch::Entry', :foreign_key => :modelrowid, :conditions => proc { {:modelid => base.model_id} }, :dependent => :delete_all
     end
     
   end

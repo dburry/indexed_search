@@ -88,7 +88,7 @@ describe IndexedSearch::Index do
         it('find4')   { Foo.search_entries.find_results(@q.new('first test one'), 25).models.should == [@f2, @f1] }
       end
 
-    end
+    end # updating
 
     context 'and new data' do
       before(:each) { @f3 = create(:foo, :name => 'first first', :description => 'test first foo') }
@@ -98,7 +98,18 @@ describe IndexedSearch::Index do
         it('find2') { @e.find_results(@q.new('one two'), 25).models.should    == [@f2, @f1, @b1] }
       end
     end
-    context 'and deleted row' do
+
+    context 'and row destroyed' do
+      before(:each) do
+        @f2.delete_search_index
+        @f2.destroy
+      end
+      it('find1')   { @e.find_results(@q.new('one two'), 25).models.should      == [@f1, @b1] }
+      it('find2')   { @e.find_results(@q.new('first test'), 25).models.should   == [@f1, @b1] }
+      it('find3')   { @e.find_results(@q.new('test second'), 25).models.should  == [@b2, @b2.foo, @f1] }
+    end
+
+    context 'and deleted index' do
       before(:each) { @f1.delete_search_index }
       it('find1') { @e.find_results(@q.new('first test'), 25).models.should == [@b1, @f2] }
       it('find2') { @e.find_results(@q.new('one two'), 25).models.should    == [@f2, @b1] }
@@ -139,7 +150,7 @@ describe IndexedSearch::Index do
         it('find2') { @e.find_results(@q.new('one two'), 25).models.should    == [@f2, @f1, @b1] }
       end
 
-    end
+    end # and deleted row
 
   end
 
@@ -158,5 +169,87 @@ describe IndexedSearch::Index do
     end
     # TODO: do an STI test here...
   end
+
+  context 'with no primary key' do
+
+    before(:each) do
+      @e = IndexedSearch::Entry
+      @q = IndexedSearch::Query
+      @k1 = create(:key, :name => 'first one',  :description => 'test first key')
+      @k2 = create(:key, :name => 'second one', :description => 'test second two')
+      Key.create_search_index
+    end
+
+    context 'creating' do
+      it('find1')   { @e.find_results(@q.new('one two'), 25).models.collect(&:idx).should      == [@k2, @k1].collect(&:idx) }
+      it('find2')   { @e.find_results(@q.new('first test'), 25).models.collect(&:idx).should   == [@k1, @k2].collect(&:idx) }
+      it('find3')   { @e.find_results(@q.new('test second'), 25).models.collect(&:idx).should  == [@k2, @k1].collect(&:idx) }
+      it('find4')   { @e.find_results(@q.new('again'), 25).should                              == [] }
+    end
+
+    context 'updating' do
+      before(:each) do
+        Key.where(:idx => @k1.idx).update_all(:name => 'yet again')
+        Key.update_search_index
+      end
+      it('find1')   { @e.find_results(@q.new('one two'), 25).models.collect(&:idx).should      == [@k2].collect(&:idx) }
+      it('find2')   { @e.find_results(@q.new('first test'), 25).models.collect(&:idx).should   == [@k1, @k2].collect(&:idx) }
+      it('find3')   { @e.find_results(@q.new('test second'), 25).models.collect(&:idx).should  == [@k2, @k1].collect(&:idx) }
+      it('find4')   { @e.find_results(@q.new('again'), 25).models.collect(&:idx).should        == [@k1].collect(&:idx) }
+    end
+
+    context 'deleting' do
+      before(:each) do
+        @k2.delete_search_index
+        Key.delete_all(:idx => @k2.idx)
+      end
+      it('find1')   { @e.find_results(@q.new('one two'), 25).models.collect(&:idx).should      == [@k1].collect(&:idx) }
+      it('find2')   { @e.find_results(@q.new('first test'), 25).models.collect(&:idx).should   == [@k1].collect(&:idx) }
+      it('find3')   { @e.find_results(@q.new('test second'), 25).models.collect(&:idx).should  == [@k1].collect(&:idx) }
+      it('find4')   { @e.find_results(@q.new('again'), 25).should                              == [] }
+    end
+
+  end  # with no primary key
+
+  context 'with composite primary key' do
+
+    before(:each) do
+      @e = IndexedSearch::Entry
+      @q = IndexedSearch::Query
+      @c1 = create(:comp, :name => 'first one',  :description => 'test first key')
+      @c2 = create(:comp, :name => 'second one', :description => 'test second two')
+      Comp.create_search_index
+    end
+
+    context 'creating' do
+      it('find1')   { @e.find_results(@q.new('one two'), 25).models.should      == [@c2, @c1] }
+      it('find2')   { @e.find_results(@q.new('first test'), 25).models.should   == [@c1, @c2] }
+      it('find3')   { @e.find_results(@q.new('test second'), 25).models.should  == [@c2, @c1] }
+      it('find4')   { @e.find_results(@q.new('again'), 25).should               == [] }
+    end
+
+    context 'updating' do
+      before(:each) do
+        @c1.update_attributes(:name => 'yet again')
+        Comp.update_search_index
+      end
+      it('find1')   { @e.find_results(@q.new('one two'), 25).models.should      == [@c2] }
+      it('find2')   { @e.find_results(@q.new('first test'), 25).models.should   == [@c1, @c2] }
+      it('find3')   { @e.find_results(@q.new('test second'), 25).models.should  == [@c2, @c1] }
+      it('find4')   { @e.find_results(@q.new('again'), 25).models.should        == [@c1] }
+    end
+
+    context 'deleting' do
+      before(:each) do
+        @c2.delete_search_index
+        @c2.destroy
+      end
+      it('find1')   { @e.find_results(@q.new('one two'), 25).models.should      == [@c1] }
+      it('find2')   { @e.find_results(@q.new('first test'), 25).models.should   == [@c1] }
+      it('find3')   { @e.find_results(@q.new('test second'), 25).models.should  == [@c1] }
+      it('find4')   { @e.find_results(@q.new('again'), 25).should               == [] }
+    end
+
+  end  # with composite primary key
 
 end

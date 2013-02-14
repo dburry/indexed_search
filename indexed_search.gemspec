@@ -19,7 +19,7 @@ Gem::Specification.new do |s|
   s.add_dependency "text"
   s.add_dependency "unicode_utils"
   s.add_dependency "valium"
-  s.add_dependency "each_batched"
+  s.add_dependency "each_batched", ">= 0.1.2"
   s.add_dependency "activerecord-import"
 
   s.add_development_dependency "mysql2"
@@ -29,4 +29,5 @@ Gem::Specification.new do |s|
   s.add_development_dependency "rspec-rails"
   s.add_development_dependency "factory_girl_rails"
   s.add_development_dependency "launchy"
+  s.add_development_dependency "composite_primary_keys"
 end
