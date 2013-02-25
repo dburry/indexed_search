@@ -86,38 +86,39 @@ module IndexedSearch
     end
 
     def self.update_ranks_by_ids(ids)
+      count = 0
       if ids.length == 1
         (cnt, lim) = where(:id => ids).values_of(:entries_count, :rank_limit).first
         if cnt  > rank_reduction_factor
-          where(:id => ids).update_all(update_rank_sql(ids[0]))
+          count += where(:id => ids).update_all(update_rank_sql(ids[0]))
         elsif lim != 0
-          where(:id => ids).update_all(:rank_limit => 0)
+          count += where(:id => ids).update_all(:rank_limit => 0)
         end
       else
-        where(:id => ids).update_ranks
+        count += scoped.where(arel_table[:entries_count].lteq(rank_reduction_factor)).order('id').update_all(:rank_limit => 0)
+        ids.in_groups_of(1_000, false).each do |id_group|
+          count += scoped.where(arel_table[:entries_count].gt(rank_reduction_factor).and(arel_table[:id].in(id_group))).order('id').update_all(update_rank_sql('words.id'))
+        end
       end
+      count
     end
-    def self.update_counts_by_ids(ids)
-      ids.each { |id| where(:id => id).update_all(update_count_sql(id)) }
+    def self.incr_counts_by_ids(ids, offset=1)
+      where(:id => ids).order('id').update_all("entries_count = entries_count + #{offset}")
     end
-    def self.incr_counts_by_ids(ids)
-      where(:id => ids).order('id').update_all("entries_count = entries_count + 1")
-    end
-    def self.decr_counts_by_ids(ids)
-      where(:id => ids).order('id').update_all("entries_count = entries_count - 1")
+    def self.decr_counts_by_ids(ids, offset=1)
+      where(:id => ids).order('id').update_all("entries_count = entries_count - #{offset}")
     end
     def self.update_ranks
-      scoped.where(arel_table[:entries_count].lteq(rank_reduction_factor)).order('id').update_all(:rank_limit => 0)
-      scoped.where(arel_table[:entries_count].gt(rank_reduction_factor)).value_of(:id).each do |id|
-        IndexedSearch::Word.where(:id => id).update_all(update_rank_sql(id))
+      count = scoped.where(arel_table[:entries_count].lteq(rank_reduction_factor)).order('id').update_all(:rank_limit => 0)
+      scoped.where(arel_table[:entries_count].gt(rank_reduction_factor)).order('id').batches_by_ids do |subscope|
+        count += subscope.update_all(update_rank_sql('words.id'))
       end
-      # maybe technically faster in some cases? but internally locks table for a while:
-      #scoped.where(arel_table[:entries_count].gt(rank_reduction_factor)).order('id').update_all(update_rank_sql('words.id'))
+      count
     end
     def self.update_counts
-      update_counts_by_ids(scoped.value_of(:id))
-      # maybe faster? but can internally lock table for a long time:
-      # scoped.order('id').update_all(update_count_sql('words.id'))
+      count = 0
+      scoped.order('id').batches_by_ids { |subscope| count += subscope.update_all(update_count_sql('words.id')) }
+      count
     end
     # a sql string suitable for passing to #update_all
     # pass an id to do one word row, or the string 'words.id' to do a mass update (might lock table for a long time tho)
@@ -131,21 +132,29 @@ module IndexedSearch
     def self.update_count_sql(id_text)
       "entries_count=(SELECT COUNT(*) FROM entries WHERE word_id=#{id_text})"
     end
+
+    def self.fix_counts_orphans_and_ranks
+      update_counts
+      delete_empty
+      update_ranks
+    end
     
     # cleanup after reindexing/deleting from main index
     # doesn't hurt index for extra words to hang around, just wastes space
     # also resets auto increment if the entire database is purged
     def self.delete_orphaned
-      empty_entry.delete_all
+      count = empty_entry.delete_all
       reset_auto_increment
+      count
     end
     # scope used by delete_orphaned
     scope :empty_entry, {:conditions => 'NOT EXISTS (SELECT * FROM entries WHERE entries.word_id=words.id)'}
 
     # faster version of delete_orphaned that depends on the entries_count column being up to date
     def self.delete_empty
-      where(:entries_count => 0).delete_all
+      count = where(:entries_count => 0).delete_all
       reset_auto_increment
+      count
     end
 
     def to_s

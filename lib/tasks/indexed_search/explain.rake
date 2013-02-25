@@ -3,7 +3,6 @@ require 'valium'
 
 # rake task for explaining the innards of how a query is working with your settings and index
 # very useful for debugging problems and optimizing your settings
-# TODO: need to make it time how long the queries take...
 
 namespace :indexed_search do
 
@@ -16,14 +15,19 @@ namespace :indexed_search do
     ENV['VERBOSE'].blank? || ENV['VERBOSE'] =~ /^(?:1|0|yes|no|true|false|on|off)$/ or raise "bad value for VERBOSE"
     verbose = ENV['VERBOSE'].present? && ENV['VERBOSE'] =~ /^(?:1|yes|true|on)$/
 
-    query = IndexedSearch::Query.new(querystr)
+    puts "\n"
+    query = nil
+    tm_parse = Benchmark.measure { query = IndexedSearch::Query.new(querystr) }
     if query.empty?
       puts "Query contained no terms!"
       next
     end
     puts "Parsed into terms: " + query.join(', ')
 
-    if query.results.empty?
+    puts "\n"
+    is_empty = true
+    tm_matches = Benchmark.measure { is_empty = query.results.empty? }
+    if is_empty
       puts "Query matched no words in the index!"
       next
     end
@@ -61,15 +65,24 @@ namespace :indexed_search do
              "  If this is a problem, see type_reduction_factor in your settings."
     end
 
-    count = IndexedSearch::Entry.count_results(query)
+    puts "\n"
+    count = 0
+    tm_count = Benchmark.measure { count = IndexedSearch::Entry.count_results(query) }
     if count == 0
       puts "No results were found!\nNOTE: Your index needs to be compacted, since word matches were found but no results."
       next
     end
     puts "Results (" + (count <= limit ? count.to_s : "#{limit} of #{count}") + '):'
-    IndexedSearch::Entry.find_results(query, limit, 1).each do |result|
+    results = []
+    tm_results = Benchmark.measure { results = IndexedSearch::Entry.find_results(query, limit, 1).all }
+    results.each do |result|
       name = result.model.respond_to?(:name) ? result.model.name : result.model.to_s
       puts "  #{result.model.class.name.underscore} [#{result.queryrank.to_i}]: #{name}"
+    end
+
+    puts "\n"
+    Benchmark.benchmark(Benchmark::CAPTION, 7, Benchmark::FORMAT, 'parse:', 'matches:', 'count:', 'results:', 'TOTAL:') do |bm|
+      [tm_parse, tm_matches, tm_count, tm_results, tm_parse + tm_matches + tm_count + tm_results]
     end
 
   end

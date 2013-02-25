@@ -1,6 +1,7 @@
 
 require 'each_batched'
 require 'activerecord-import'
+require 'indexed_search/core_ext/hash'
 
 # 
 # Utility module containing what is needed to index a given model for searching
@@ -82,35 +83,88 @@ module IndexedSearch
     self.models_by_id = {}
     
     module ClassMethods
+
       # main entry points for indexing a whole model in one go
       # uses some alternate more complicated/fragile queries to avoid loading entire table into memory!
       # beware that you shouldn't add/remove rows concurrently while updating...
       def create_search_index
-        search_index_scope.each_by_ids(700, id_for_index_attr) { |row| row.create_search_index }
+        word_count_incrs = Hash.new(0)
+        search_index_scope.order(id_for_index_attr).batches_by_ids(1_000, id_for_index_attr) do |group_scope|
+          IndexedSearch::Entry.transaction do
+            rank_data = group_scope.collect_search_ranks
+            search_insertion_data = []
+            group_scope.each do |row|
+              search_insertion_data += row.make_search_insertion_data(rank_data[row.id_for_index])
+              rank_data[row.id_for_index].keys.each { |word_id| word_count_incrs[word_id] += 1 }
+            end
+            #Rails.logger.info(search_insertion_data)
+            IndexedSearch::Entry.import(search_insertion_headings, search_insertion_data, :validate => false)
+          end
+        end
+        #Rails.logger.info(word_count_incrs)
+        word_count_incrs.invert_multi.each { |amount, ids| IndexedSearch::Word.incr_counts_by_ids(ids, amount) }
+        IndexedSearch::Word.update_ranks_by_ids(word_count_incrs.keys)
+        #Rails.logger.info(IndexedSearch::Word.all.collect(&:inspect).join("\n"))
+        #Rails.logger.info(IndexedSearch::Entry.all.collect(&:inspect).join("\n"))
       end
       def update_search_index
+        word_count_incrs = Hash.new(0)
+        word_count_decrs = Hash.new(0)
+        word_rank_changes = Set.new
         # reindex existing rows
-        search_index_scope.each_by_ids(700, id_for_index_attr) { |row| row.update_search_index }
-        # remove index for model rows that no longer exist
-        search_entries.
-          where(
-            "(" +
-              "SELECT `#{table_name}`.`#{id_for_index_attr}` " +
-              "FROM `#{table_name}` " +
-              "WHERE `entries`.`modelid`=#{model_id} AND " +
-                "`entries`.`modelrowid`=`#{table_name}`.`#{id_for_index_attr}`" +
-            ") IS NULL"
-          ).
-          delete_all
-        # cleanup any extra words that are no longer used, when done
-        IndexedSearch::Word.delete_orphaned
+        search_index_scope.order(id_for_index_attr).batches_by_ids(1_000, id_for_index_attr) do |group_scope|
+          IndexedSearch::Entry.transaction do
+            # pre-cache entire group of existing index entries by model id
+            mdl_row_ids = group_scope.collect(&(id_for_index_attr))
+            entry_cache = Hash.of { [] }
+            IndexedSearch::Entry.where(:modelid => model_id, :modelrowid => mdl_row_ids).each do |entry|
+              entry_cache[entry.modelrowid] << entry
+            end
+            rank_data = group_scope.collect_search_ranks
+            # figure out what to add, update, and delete from each
+            search_insertion_data = []
+            inverted_update_data = Hash.of { [] }
+            search_deletion_data = []
+            group_scope.each do |row|
+              (inserts, updates, deletions, count_decrs, rank_changes) = row.make_search_update_data(rank_data[row.id_for_index], entry_cache[row.id_for_index])
+              search_insertion_data += row.make_search_insertion_data(inserts)
+              updates.each { |id, vals| inverted_update_data[vals] << id }
+              search_deletion_data += deletions
+              inserts.keys.each { |word_id| word_count_incrs[word_id] += 1 }
+              count_decrs.each { |word_id| word_count_decrs[word_id] += 1 }
+              word_rank_changes += rank_changes
+            end
+            # add, update, and delete index entries for this group of models
+            IndexedSearch::Entry.import(search_insertion_headings, search_insertion_data, :validate => false) unless search_insertion_data.blank?
+            inverted_update_data.each { |vals, ids| IndexedSearch::Entry.where(:id => ids).update_all(vals) }
+            IndexedSearch::Entry.where(:id => search_deletion_data).delete_all unless search_deletion_data.blank?
+          end
+        end
+        # delete indexes for model rows that no longer exist
+        entry_table = IndexedSearch::Entry.arel_table
+        subrelation = unscoped.select(arel_table[id_for_index_attr]).
+          where(entry_table[:modelid].eq(model_id).and(entry_table[:modelrowid].eq(arel_table[id_for_index_attr])))
+        search_deletion_data = []
+        search_entries.where("(#{subrelation.to_sql}) IS NULL").values_of(:id, :word_id).each do |id, word_id|
+          search_deletion_data << id
+          word_count_decrs[word_id] += 1
+          word_rank_changes << word_id
+        end
+        IndexedSearch::Entry.where(:id => search_deletion_data).delete_all unless search_deletion_data.blank?
+        # increment/decrement counts for added/removed words
+        word_count_incrs.invert_multi.each { |amount, ids| IndexedSearch::Word.incr_counts_by_ids(ids, amount) }
+        word_count_decrs.invert_multi.each { |amount, ids| IndexedSearch::Word.decr_counts_by_ids(ids, amount) }
+        # delete orphaned words no longer used anywhere
+        IndexedSearch::Word.delete_empty unless word_count_decrs.blank?
+        # update word ranks
+        IndexedSearch::Word.update_ranks_by_ids(word_rank_changes.to_a) unless word_rank_changes.blank?
+        #Rails.logger.info(IndexedSearch::Word.all.collect(&:inspect).join("\n"))
+        #Rails.logger.info(IndexedSearch::Entry.all.collect(&:inspect).join("\n"))
       end
       def delete_search_index
         search_entries.delete_all
         IndexedSearch::Entry.reset_auto_increment
-        IndexedSearch::Word.update_counts
-        IndexedSearch::Word.delete_empty
-        IndexedSearch::Word.update_ranks
+        IndexedSearch::Word.fix_counts_orphans_and_ranks
       end
       
       def search_entries
@@ -124,7 +178,31 @@ module IndexedSearch
       rescue
         raise BadModelException.new("#{self.name} does not appear to be an indexed model, see IndexedSearch::Index.models_by_id in config/initializers/indexed_search.rb")
       end
-      
+      def collect_search_ranks
+        word_list = Set.new
+        wrd_rnk_map = Hash.of { Hash.new(0) }
+        scoped.each do |row|
+          row.search_index_info.each do |txt, amnt|
+            words = IndexedSearch::Query.split_into_words(txt)
+            word_list += words
+            words.each { |word| wrd_rnk_map[row.id_for_index][word] += amnt }
+          end
+        end
+        #pp word_list.to_a
+        wrd_id_map = IndexedSearch::Word.word_id_map(word_list.to_a)
+        srch_rnks = Hash.of { {} }
+        wrd_rnk_map.each { |id, data| data.each { |wrd, rnk| srch_rnks[id][wrd_id_map[wrd]] = rnk } }
+        srch_rnks
+      end
+      #def collect_search_ranks
+      #  wrd_rnk_map = Hash.new(0)
+      #  search_index_info.each { |txt, amnt| IndexedSearch::Query.split_into_words(txt).each { |w| wrd_rnk_map[w] += amnt } }
+      #  wrd_id_map = IndexedSearch::Word.word_id_map(wrd_rnk_map.keys)
+      #  srch_rnks = {}
+      #  wrd_rnk_map.each { |wrd, rnk| srch_rnks[wrd_id_map[wrd]] = rnk }
+      #  srch_rnks
+      #end
+
       # The column from your indexed model that will be stored in the Entry model's modelrowid attribute.
       #
       # Override this in your model if you're using a different column than what is returned by
@@ -145,61 +223,38 @@ module IndexedSearch
       def id_for_index_attr
         :id
       end
+      def search_insertion_headings
+        [:word_id, :rowidx, :modelid, :modelrowid, :rank, :row_priority]
+      end
+
     end # ClassMethods
     
     module InstanceMethods
       
-      def create_search_index
+      def create_search_index(do_quickly=false)
         IndexedSearch::Entry.transaction do
           srch_rnks = collect_search_ranks
-          IndexedSearch::Entry.import(*make_search_insertions(srch_rnks), :validate => false)
-          IndexedSearch::Word.incr_counts_by_ids(srch_rnks.keys)
+          IndexedSearch::Entry.import(self.class.search_insertion_headings, make_search_insertion_data(srch_rnks), :validate => false)
+          unless do_quickly
+            IndexedSearch::Word.incr_counts_by_ids(srch_rnks.keys)
+            IndexedSearch::Word.update_ranks_by_ids(srch_rnks.keys)
+          end
         end
       end
       # updates and deletes are often called in a loop to manipulate multiple rows at once
-      # it's recommended at the end of the whole loop, call this to keep index clean:
-      # IndexedSearch::Word.delete_orphaned, just as the class-level versions above do
-      # it's not included here for speed when looping
-      def update_search_index
-        ranks = collect_search_ranks
-        updates = {}
-        deletions = []
-        rank_changes = []
-        count_decrs = []
-        sp = search_priority.round(15)
-        search_entries.each do |hit|
-          if ranks.has_key?(hit.word_id)
-            upd = {}
-            if hit.rank != ranks[hit.word_id]
-              upd[:rank]        = ranks[hit.word_id]
-              rank_changes      << hit.word_id
-            end
-            upd[:row_priority]  = sp     if hit.row_priority  != sp
-            updates[hit.id]     = upd    unless upd.empty?
-            ranks.delete(hit.word_id)
-          else
-            deletions << hit.id
-            rank_changes << hit.word_id
-            count_decrs << hit.word_id
-          end
-        end
-        # at this point, whatever's left in the ranks variable should be inserted into new entries
-        # ideally we should do rank_changes for those inserts too, but it's commented out because it's slow
-        # failing to update this will merely cause searches to get slower over time with a lot of additions
-        # a manually-triggered update via rake task periodically will fix it, especially after major model changes
-        # rank_changes += ranks.keys
-        unless ranks.blank? && updates.blank? && deletions.blank?
+      def update_search_index(do_quickly=false)
+        (inserts, updates, deletions, count_decrs, rank_changes) = make_search_update_data(collect_search_ranks)
+        unless inserts.blank? && updates.blank? && deletions.blank?
           IndexedSearch::Entry.transaction do
-            IndexedSearch::Entry.import(*make_search_insertions(ranks), :validate => false) unless ranks.blank?
-            unless updates.blank?
-              inverted_updates = Hash.new { |h, k| h[k] = [] }
-              updates.each { |id, vals| inverted_updates[vals] << id }
-              inverted_updates.each { |vals, ids| IndexedSearch::Entry.where(:id => ids).update_all(vals) }
-            end
+            IndexedSearch::Entry.import(self.class.search_insertion_headings, make_search_insertion_data(inserts), :validate => false) unless inserts.blank?
+            updates.invert_multi.each { |vals, ids| IndexedSearch::Entry.where(:id => ids).update_all(vals) }
             IndexedSearch::Entry.where(:id => deletions).delete_all unless deletions.blank?
-            IndexedSearch::Word.update_ranks_by_ids(rank_changes)   unless rank_changes.blank?
-            IndexedSearch::Word.incr_counts_by_ids(ranks.keys)      unless ranks.blank?
-            IndexedSearch::Word.decr_counts_by_ids(count_decrs)     unless count_decrs.blank?
+            unless do_quickly
+              IndexedSearch::Word.incr_counts_by_ids(inserts.keys)  unless inserts.blank?
+              IndexedSearch::Word.decr_counts_by_ids(count_decrs)   unless count_decrs.blank?
+              IndexedSearch::Word.delete_empty                      unless count_decrs.blank?
+              IndexedSearch::Word.update_ranks_by_ids(rank_changes) unless rank_changes.blank?
+            end
           end
         end
       end
@@ -211,6 +266,7 @@ module IndexedSearch
       def delete_search_index
         IndexedSearch::Entry.transaction do
           search_entries.delete_all
+          #IndexedSearch::Word.fix_counts_orphans_and_ranks
         end
       end
       
@@ -232,17 +288,40 @@ module IndexedSearch
       def id_for_index
         send self.class.id_for_index_attr
       end
-      def make_search_insertions(ranks)
+      def make_search_insertion_data(ranks)
         id = id_for_index
         idx = ((id << 8) | model_id)
         mid = model_id
         pri = search_priority.round(15)
-        [
-          [:word_id, :rowidx, :modelid, :modelrowid, :rank, :row_priority],
-          ranks.collect { |wid, rnk| [wid, idx, mid, id, rnk, pri] }
-        ]
+        ranks.collect { |wid, rnk| [wid, idx, mid, id, rnk, pri] }
       end
-      
+      def make_search_update_data(ranks, search_entries=nil)
+        updates = {}
+        deletions = []
+        count_decrs = []
+        rank_changes = []
+        sp = search_priority.round(15)
+        (search_entries || self.search_entries).each do |hit|
+          if ranks.has_key?(hit.word_id)
+            upd = {}
+            if hit.rank != ranks[hit.word_id]
+              upd[:rank]        = ranks[hit.word_id]
+              rank_changes      << hit.word_id
+            end
+            upd[:row_priority]  = sp     if hit.row_priority  != sp
+            updates[hit.id]     = upd    unless upd.empty?
+            ranks.delete(hit.word_id)
+          else
+            deletions << hit.id
+            count_decrs << hit.word_id
+            rank_changes << hit.word_id
+          end
+        end
+        # at this point, whatever is left in the ranks variable should be inserted as new entries
+        rank_changes += ranks.keys
+        [ranks, updates, deletions, count_decrs, rank_changes]
+      end
+
     end # InstanceMethods
     
     # make the whole thing work when included and extended:

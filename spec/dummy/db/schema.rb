@@ -20,7 +20,7 @@ ActiveRecord::Schema.define(:version => 20130214092427) do
 
   add_index "bars", ["foo_id"], :name => "index_bars_on_foo_id"
 
-  create_table "comps", :force => true do |t|
+  create_table "comps", :id => false, :force => true do |t|
     t.integer "id1",                                       :null => false
     t.integer "id2",                                       :null => false
     t.integer "idx",                                       :null => false
@@ -28,7 +28,7 @@ ActiveRecord::Schema.define(:version => 20130214092427) do
     t.string  "description", :limit => 20, :default => "", :null => false
   end
 
-  add_index "comps", ["id1", "id2"], :name => "index_comps_on_id1_and_id2", :unique => true
+  add_index "comps", ["id1", "id2"], :name => "index_comps_on_idx1_and_idx2", :unique => true
   add_index "comps", ["idx"], :name => "index_comps_on_idx", :unique => true
 
   create_table "entries", :force => true do |t|

@@ -43,11 +43,11 @@ module IndexedSearch
               end
               self << result if do_all || result.list_map.present?
               return if terms.empty? && ! do_all
-            end
-          end
-        end
+            end # if result not empty
+          end # result loop
+        end # match_type loop
         
-      end
+      end # initialize method
       
     end # result list class
     

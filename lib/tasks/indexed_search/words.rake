@@ -29,36 +29,30 @@ namespace :indexed_search do
 
     desc "Runs update_counts, delete_orphaned, and update_ranks.  When doing individual model record index updates/deletes, to save time these internal caches are not updated like they are for model-wide index deletes.  Running this rake task periodically can improve ranking and speed and conserve some space when that is done a lot."
     task :cleanup => :environment do
-      puts "Updating words.entries_count column..."
-      IndexedSearch::Word.update_counts
-      puts "Deleting orphaned words that are no longer in use..."
-      IndexedSearch::Word.delete_empty
-      puts "Updating words.rank_limit column..."
-      IndexedSearch::Word.update_ranks
-      puts "Done."
+      Rake::Task['indexed_search:words:update_counts'].invoke
+      print "Deleting orphaned words that are no longer in use... "
+      puts "#{IndexedSearch::Word.delete_empty} deleted."
+      print "Updating words.rank_limit column... "
+      puts "#{IndexedSearch::Word.update_ranks} updated."
     end
 
     desc "Updates the internal words.rank_limit column for all words.  When changing IndexedSearch::Word.rank_reduction_factor run this!"
     task :update_ranks => :environment do
-      puts "Updating words.entries_count column..."
-      IndexedSearch::Word.update_counts
-      puts "Updating words.rank_limit column..."
-      IndexedSearch::Word.update_ranks
-      puts "Done."
+      Rake::Task['indexed_search:words:update_counts'].invoke
+      print "Updating words.rank_limit column... "
+      puts "#{IndexedSearch::Word.update_ranks} updated."
     end
 
     desc "Updates the internal words.entries_count column for all words."
     task :update_counts => :environment do
-      puts "Updating words.entries_count column..."
-      IndexedSearch::Word.update_counts
-      puts "Done."
+      print "Updating words.entries_count column... "
+      puts "#{IndexedSearch::Word.update_counts} updated."
     end
 
     desc "Deletes orphaned words that are no longer in use."
     task :delete_orphaned => :environment do
-      puts "Deleting orphaned words that are no longer in use..."
-      IndexedSearch::Word.delete_orphaned
-      puts "Done."
+      print "Deleting orphaned words that are no longer in use... "
+      puts "#{IndexedSearch::Word.delete_orphaned} deleted."
     end
 
     desc "Regenerates matcher column data in words table, scoped with a MATCHERS parameter or all of them."

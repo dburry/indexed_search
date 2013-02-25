@@ -8,7 +8,7 @@ class AddUniqueKey < ActiveRecord::Migration
     end
     add_index :keys, :idx, :unique => true
 
-    create_table(:comps, :id => 'id1,id2') do |t|
+    create_table(:comps, :id => false) do |t|
       t.integer 'id1',         :null => false
       t.integer 'id2',         :null => false
       t.integer 'idx',         :null => false

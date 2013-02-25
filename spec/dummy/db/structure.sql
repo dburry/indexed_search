@@ -7,13 +7,11 @@ CREATE TABLE `bars` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE `comps` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
   `id1` int(11) NOT NULL,
   `id2` int(11) NOT NULL,
   `idx` int(11) NOT NULL,
   `name` varchar(10) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `description` varchar(20) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
-  PRIMARY KEY (`id`),
   UNIQUE KEY `index_comps_on_id1_and_id2` (`id1`,`id2`),
   UNIQUE KEY `index_comps_on_idx` (`idx`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
@@ -31,14 +29,14 @@ CREATE TABLE `entries` (
   KEY `index_entries_on_modelid` (`modelid`),
   KEY `index_entries_on_modelrowid` (`modelrowid`),
   KEY `index_entries_on_word_id_and_rank` (`word_id`,`rank`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE `foos` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(10) NOT NULL DEFAULT '',
   `description` varchar(20) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
 
 CREATE TABLE `keys` (
   `idx` int(11) NOT NULL,
@@ -72,7 +70,7 @@ CREATE TABLE `words` (
   KEY `index_words_on_primary_metaphone` (`primary_metaphone`),
   KEY `index_words_on_secondary_metaphone` (`secondary_metaphone`),
   KEY `index_words_on_american_soundex` (`american_soundex`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
 
 INSERT INTO schema_migrations (version) VALUES ('20120712194526');
 
