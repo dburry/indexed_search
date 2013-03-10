@@ -43,6 +43,8 @@ module IndexedSearch
     cattr_accessor :max_length
     self.max_length = 64
 
+    GROUP_BY_AMOUNT = 1_000
+
     # when indexing, the words may or may not exist in the model yet...
     # param: array of word strings
     # returns: array of word model ids (some may be previously existing, some may be brand new)
@@ -85,76 +87,110 @@ module IndexedSearch
       create!(attrs, :without_protection => true).id
     end
 
-    def self.update_ranks_by_ids(ids)
-      count = 0
-      if ids.length == 1
-        (cnt, lim) = where(:id => ids).values_of(:entries_count, :rank_limit).first
-        if cnt  > rank_reduction_factor
-          count += where(:id => ids).update_all(update_rank_sql(ids[0]))
-        elsif lim != 0
-          count += where(:id => ids).update_all(:rank_limit => 0)
-        end
-      else
-        count += scoped.where(arel_table[:entries_count].lteq(rank_reduction_factor)).order('id').update_all(:rank_limit => 0)
-        ids.in_groups_of(1_000, false).each do |id_group|
-          count += scoped.where(arel_table[:entries_count].gt(rank_reduction_factor).and(arel_table[:id].in(id_group))).order('id').update_all(update_rank_sql('words.id'))
-        end
-      end
-      count
-    end
+    # quickly increment entries_count column for certain word ids (can be used when adding entries)
     def self.incr_counts_by_ids(ids, offset=1)
       where(:id => ids).order('id').update_all("entries_count = entries_count + #{offset}")
     end
+    
+    # quickly decrement entries_count column for certain word ids (can be used when removing entries)
     def self.decr_counts_by_ids(ids, offset=1)
       where(:id => ids).order('id').update_all("entries_count = entries_count - #{offset}")
     end
-    def self.update_ranks
-      count = scoped.where(arel_table[:entries_count].lteq(rank_reduction_factor)).order('id').update_all(:rank_limit => 0)
-      scoped.where(arel_table[:entries_count].gt(rank_reduction_factor)).order('id').batches_by_ids do |subscope|
-        count += subscope.update_all(update_rank_sql('words.id'))
-      end
-      count
-    end
+
+    # update entries_count column for words
     def self.update_counts
-      count = 0
-      scoped.order('id').batches_by_ids { |subscope| count += subscope.update_all(update_count_sql('words.id')) }
-      count
-    end
-    # a sql string suitable for passing to #update_all
-    # pass an id to do one word row, or the string 'words.id' to do a mass update (might lock table for a long time tho)
-    # note parameter is assumed to be safe
-    def self.update_rank_sql(id_text)
-      "rank_limit=LEAST((SELECT rank FROM entries WHERE word_id=#{id_text} ORDER BY rank DESC LIMIT 1 OFFSET #{rank_reduction_factor}), #{min_rank_reduction})"
-    end
-    # a sql string suitable for passing to #update_all
-    # pass an id to do one word row, or the string 'words.id' to do a mass update (might lock table for a long time tho)
-    # note parameter is assumed to be safe
-    def self.update_count_sql(id_text)
-      "entries_count=(SELECT COUNT(*) FROM entries WHERE word_id=#{id_text})"
+      cnt = 0
+      old_counts = Hash[scoped.values_of(:id, :entries_count)]
+      old_counts.keys.in_groups_of(GROUP_BY_AMOUNT, false) do |old_id_group|
+        updates = {}
+        IndexedSearch::Entry.where(:word_id => old_id_group).group(:word_id).count.each do |id, new_count|
+	  updates[id] = new_count if old_counts[id] != new_count
+	end
+        updates.invert_multi.each { |new_count, up_ids| cnt += scoped.where(:id => up_ids).order('id').update_all(:entries_count => new_count) }
+      end
+      cnt
     end
 
-    def self.fix_counts_orphans_and_ranks
-      update_counts
-      delete_empty
-      update_ranks
+    # optimized update of rank_limit column for certain word ids
+    def self.update_ranks_by_ids(ids)
+      cnt = 0
+      if ids.length == 1
+        (c, old_lim) = where(:id => ids.first).values_of(:entries_count, :rank_limit).first
+        if c  > rank_reduction_factor
+          new_lim = calculate_rank_limit_for_id(ids.first)
+          cnt += where(:id => ids.first).update_all(:rank_limit => new_lim) if new_lim != old_lim
+        elsif old_lim > 0
+          cnt += zero_out_ranks_by_id(ids.first)
+        end
+      else
+        cnt = update_zeroed_ranks
+	updates = {}
+        ids.in_groups_of(GROUP_BY_AMOUNT, false).each { |id_group| updates.merge!(where(:id => id_group).rank_limit_updates) }
+        cnt += update_rank_limits(updates)
+      end
+      cnt
     end
+
+    # update rank_limit column for words
+    def self.update_ranks
+      update_zeroed_ranks + update_rank_limits(rank_limit_updates)
+    end
+
+    private
+    def self.update_zeroed_ranks
+      ids = rank_limit_needs_zeroing.value_of(:id)
+      return 0 if ids.blank?
+      cnt = 0
+      ids.in_groups_of(1000, false).each { |id_group| cnt += zero_out_ranks_by_id(id_group) }
+      cnt
+    end
+    def self.zero_out_ranks_by_id(ids)
+      scoped.where(:id => ids).order('id').update_all(:rank_limit => 0)
+    end
+    def self.calculate_rank_limit_for_id(id)
+      [IndexedSearch::Entry.where(:word_id => id).order('rank DESC').limit(1).offset(rank_reduction_factor).value_of(:rank).first, min_rank_reduction].min
+    end
+    def self.rank_limit_updates
+      updates = {}
+      rank_limit_needs_checking.values_of(:id, :rank_limit).each do |id, old_lim|
+        new_lim = calculate_rank_limit_for_id(id)
+        updates[id] = new_lim if new_lim != old_lim
+      end
+      updates
+    end
+    def self.update_rank_limits(updates)
+      cnt = 0
+      updates.invert_multi.each do |lim, up_ids|
+        up_ids.in_groups_of(GROUP_BY_AMOUNT, false).each { |id_group| cnt += scoped.where(:id => id_group).update_all(:rank_limit => lim) }
+      end
+      cnt
+    end
+    scope :rank_limit_needs_zeroing, where(arel_table[:entries_count].lteq(rank_reduction_factor).and(arel_table[:rank_limit].gt(0)))
+    scope :rank_limit_needs_checking, where(arel_table[:entries_count].gt(rank_reduction_factor))
+    public
     
     # cleanup after reindexing/deleting from main index
     # doesn't hurt index for extra words to hang around, just wastes space
     # also resets auto increment if the entire database is purged
     def self.delete_orphaned
-      count = empty_entry.delete_all
+      cnt = empty_entry.delete_all
       reset_auto_increment
-      count
+      cnt
     end
+
     # scope used by delete_orphaned
     scope :empty_entry, {:conditions => 'NOT EXISTS (SELECT * FROM entries WHERE entries.word_id=words.id)'}
 
     # faster version of delete_orphaned that depends on the entries_count column being up to date
     def self.delete_empty
-      count = where(:entries_count => 0).delete_all
+      cnt = where(:entries_count => 0).delete_all
       reset_auto_increment
-      count
+      cnt
+    end
+
+    # update entries_count, remove orphan words no longer used, and rank_limit all at once
+    def self.fix_counts_orphans_and_ranks
+      update_counts + delete_empty + update_ranks
     end
 
     def to_s

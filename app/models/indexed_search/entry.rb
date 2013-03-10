@@ -91,15 +91,15 @@ module IndexedSearch
     # also resets auto increment if the entire database is purged
     def self.delete_orphaned
       # delete where models no longer exist
-      where(arel_table[:modelid].not_in(IndexedSearch::Index.models_by_id.keys)).delete_all
+      cnt = where(arel_table[:modelid].not_in(IndexedSearch::Index.models_by_id.keys)).delete_all
       # delete where row ids have been set to NULL
-      where(:modelrowid => nil).delete_all
+      cnt += where(:modelrowid => nil).delete_all
       # delete for existing models where rows have been deleted
       IndexedSearch::Index.models_by_id.each do |mdlid, mdl|
-        # todo: this subselect doesn't use id_for_index properly...
-        where("entries.modelid=#{mdlid} AND NOT EXISTS (SELECT * FROM #{mdl.table_name} WHERE #{mdl.table_name}.#{mdl.id_for_index_attr}=entries.modelrowid)").delete_all
+        cnt += where("`entries`.`modelid`=#{mdlid} AND NOT EXISTS (SELECT * FROM `#{mdl.table_name}` WHERE `#{mdl.table_name}`.`#{mdl.id_for_index_attr}`=`entries`.`modelrowid`)").delete_all
       end
       reset_auto_increment
+      cnt
     end
 
     def to_s
