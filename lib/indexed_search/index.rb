@@ -112,12 +112,11 @@ module IndexedSearch
         word_count_decrs = Hash.new(0)
         word_rank_changes = Set.new
         # reindex existing rows
-        search_index_scope.order(id_for_index_attr).batches_by_ids(1_000, id_for_index_attr) do |group_scope|
+        search_index_scope.order(id_for_index_attr).batches_by_ids(1_000, id_for_index_attr) do |group_scope, group_ids|
           IndexedSearch::Entry.transaction do
             # pre-cache entire group of existing index entries by model id
-            mdl_row_ids = group_scope.collect(&(id_for_index_attr))
             entry_cache = Hash.of { [] }
-            IndexedSearch::Entry.where(:modelid => model_id, :modelrowid => mdl_row_ids).each do |entry|
+            IndexedSearch::Entry.where(:modelid => model_id, :modelrowid => group_ids).each do |entry|
               entry_cache[entry.modelrowid] << entry
             end
             rank_data = group_scope.collect_search_ranks
@@ -181,7 +180,7 @@ module IndexedSearch
       def collect_search_ranks
         word_list = Set.new
         wrd_rnk_map = Hash.of { Hash.new(0) }
-        scoped.each do |row|
+        (self.respond_to?(:each) ? self : self.scoped).each do |row|
           row.search_index_info.each do |txt, amnt|
             words = IndexedSearch::Query.split_into_words(txt)
             word_list += words
