@@ -91,21 +91,17 @@ module IndexedSearch
         word_count_incrs = Hash.new(0)
         search_index_scope.order(id_for_index_attr).batches_by_ids(1_000, id_for_index_attr) do |group_scope|
           IndexedSearch::Entry.transaction do
-            rank_data = group_scope.collect_search_ranks
+            rank_data = collect_search_ranks(group_scope)
             search_insertion_data = []
             group_scope.each do |row|
               search_insertion_data += row.make_search_insertion_data(rank_data[row.id_for_index])
               rank_data[row.id_for_index].keys.each { |word_id| word_count_incrs[word_id] += 1 }
             end
-            #Rails.logger.info(search_insertion_data)
             IndexedSearch::Entry.import(search_insertion_headings, search_insertion_data, :validate => false)
           end
         end
-        #Rails.logger.info(word_count_incrs)
         word_count_incrs.invert_multi.each { |amount, ids| IndexedSearch::Word.incr_counts_by_ids(ids, amount) }
         IndexedSearch::Word.update_ranks_by_ids(word_count_incrs.keys)
-        #Rails.logger.info(IndexedSearch::Word.all.collect(&:inspect).join("\n"))
-        #Rails.logger.info(IndexedSearch::Entry.all.collect(&:inspect).join("\n"))
       end
       def update_search_index
         word_count_incrs = Hash.new(0)
@@ -115,17 +111,17 @@ module IndexedSearch
         search_index_scope.order(id_for_index_attr).batches_by_ids(1_000, id_for_index_attr) do |group_scope, group_ids|
           IndexedSearch::Entry.transaction do
             # pre-cache entire group of existing index entries by model id
-            entry_cache = Hash.of { [] }
-            IndexedSearch::Entry.where(:modelid => model_id, :modelrowid => group_ids).each do |entry|
-              entry_cache[entry.modelrowid] << entry
+            entry_data_cache = Hash.of { [] }
+            IndexedSearch::Entry.where(:modelid => model_id, :modelrowid => group_ids).values_of(*search_entry_data_headings).each do |entry|
+              entry_data_cache[entry[4]] << entry
             end
-            rank_data = group_scope.collect_search_ranks
+            rank_data = collect_search_ranks(group_scope)
             # figure out what to add, update, and delete from each
             search_insertion_data = []
             inverted_update_data = Hash.of { [] }
             search_deletion_data = []
             group_scope.each do |row|
-              (inserts, updates, deletions, count_decrs, rank_changes) = row.make_search_update_data(rank_data[row.id_for_index], entry_cache[row.id_for_index])
+              (inserts, updates, deletions, count_decrs, rank_changes) = row.make_search_update_data(rank_data[row.id_for_index], entry_data_cache[row.id_for_index])
               search_insertion_data += row.make_search_insertion_data(inserts)
               updates.each { |id, vals| inverted_update_data[vals] << id }
               search_deletion_data += deletions
@@ -157,8 +153,6 @@ module IndexedSearch
         IndexedSearch::Word.delete_empty unless word_count_decrs.blank?
         # update word ranks
         IndexedSearch::Word.update_ranks_by_ids(word_rank_changes.to_a) unless word_rank_changes.blank?
-        #Rails.logger.info(IndexedSearch::Word.all.collect(&:inspect).join("\n"))
-        #Rails.logger.info(IndexedSearch::Entry.all.collect(&:inspect).join("\n"))
       end
       def delete_search_index
         search_entries.delete_all
@@ -177,30 +171,21 @@ module IndexedSearch
       rescue
         raise BadModelException.new("#{self.name} does not appear to be an indexed model, see IndexedSearch::Index.models_by_id in config/initializers/indexed_search.rb")
       end
-      def collect_search_ranks
+      def collect_search_ranks(scope=nil)
         word_list = Set.new
         wrd_rnk_map = Hash.of { Hash.new(0) }
-        (self.respond_to?(:each) ? self : self.scoped).each do |row|
+        (scope || scoped).each do |row|
           row.search_index_info.each do |txt, amnt|
             words = IndexedSearch::Query.split_into_words(txt)
             word_list += words
             words.each { |word| wrd_rnk_map[row.id_for_index][word] += amnt }
           end
         end
-        #pp word_list.to_a
         wrd_id_map = IndexedSearch::Word.word_id_map(word_list.to_a)
         srch_rnks = Hash.of { {} }
         wrd_rnk_map.each { |id, data| data.each { |wrd, rnk| srch_rnks[id][wrd_id_map[wrd]] = rnk } }
         srch_rnks
       end
-      #def collect_search_ranks
-      #  wrd_rnk_map = Hash.new(0)
-      #  search_index_info.each { |txt, amnt| IndexedSearch::Query.split_into_words(txt).each { |w| wrd_rnk_map[w] += amnt } }
-      #  wrd_id_map = IndexedSearch::Word.word_id_map(wrd_rnk_map.keys)
-      #  srch_rnks = {}
-      #  wrd_rnk_map.each { |wrd, rnk| srch_rnks[wrd_id_map[wrd]] = rnk }
-      #  srch_rnks
-      #end
 
       # The column from your indexed model that will be stored in the Entry model's modelrowid attribute.
       #
@@ -224,6 +209,9 @@ module IndexedSearch
       end
       def search_insertion_headings
         [:word_id, :rowidx, :modelid, :modelrowid, :rank, :row_priority]
+      end
+      def search_entry_data_headings
+        [:id, :word_id, :rank, :row_priority, :modelrowid]
       end
 
     end # ClassMethods
@@ -284,6 +272,9 @@ module IndexedSearch
         srch_rnks
       end
 
+      def search_entries_data
+        search_entries.values_of(*self.class.search_entry_data_headings)
+      end
       def id_for_index
         send self.class.id_for_index_attr
       end
@@ -294,26 +285,26 @@ module IndexedSearch
         pri = search_priority.round(15)
         ranks.collect { |wid, rnk| [wid, idx, mid, id, rnk, pri] }
       end
-      def make_search_update_data(ranks, search_entries=nil)
+      def make_search_update_data(ranks, search_entries_data=nil)
         updates = {}
         deletions = []
         count_decrs = []
         rank_changes = []
         sp = search_priority.round(15)
-        (search_entries || self.search_entries).each do |hit|
-          if ranks.has_key?(hit.word_id)
+        (search_entries_data || self.search_entries_data).each do |hit|
+          if ranks.has_key?(hit[1])
             upd = {}
-            if hit.rank != ranks[hit.word_id]
-              upd[:rank]        = ranks[hit.word_id]
-              rank_changes      << hit.word_id
+            if hit[2] != ranks[hit[1]]
+              upd[:rank]        = ranks[hit[1]]
+              rank_changes      << hit[1]
             end
-            upd[:row_priority]  = sp     if hit.row_priority  != sp
-            updates[hit.id]     = upd    unless upd.empty?
-            ranks.delete(hit.word_id)
+            upd[:row_priority]  = sp     if hit[3]  != sp
+            updates[hit[0]]     = upd    unless upd.empty?
+            ranks.delete(hit[1])
           else
-            deletions << hit.id
-            count_decrs << hit.word_id
-            rank_changes << hit.word_id
+            deletions << hit[0]
+            count_decrs << hit[1]
+            rank_changes << hit[1]
           end
         end
         # at this point, whatever is left in the ranks variable should be inserted as new entries
