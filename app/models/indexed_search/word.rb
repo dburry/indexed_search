@@ -148,7 +148,7 @@ module IndexedSearch
       scoped.where(:id => ids).order('id').update_all(:rank_limit => 0)
     end
     def self.calculate_rank_limit_for_id(id)
-      [IndexedSearch::Entry.where(:word_id => id).order('rank DESC').limit(1).offset(rank_reduction_factor).value_of(:rank).first, min_rank_reduction].min
+      [IndexedSearch::Entry.where(:word_id => id).order('rank DESC').limit(1).offset(rank_reduction_factor).value_of(:rank).first || 0, min_rank_reduction].min
     end
     def self.rank_limit_updates
       updates = {}

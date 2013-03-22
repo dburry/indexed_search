@@ -87,8 +87,25 @@ describe IndexedSearch::Word do
         @sw.delete_empty.should == 4
         @sw.all.should be_empty
       end
+      it 'updating ranks should not do anything with no entries' do
+        @sw.update_ranks.should == 0
+        @sw.value_of(:rank_limit).should == [0, 0, 0, 0]
+      end
+      it 'updating ranks by ids should not do anything with no entries' do
+        @sw.update_ranks_by_ids(@ids).should == 0
+        @sw.value_of(:rank_limit).should == [0, 0, 0, 0]
+      end
+      it 'updating ranks by one id should not do anything with no entries' do
+        @sw.update_ranks_by_ids([@ids.first]).should == 0
+        @sw.value_of(:rank_limit).should == [0, 0, 0, 0]
+      end
+      it 'updating ranks should not do anything when count is higher than it should be' do
+        @sw.where(:id => @ids.first).update_all(:entries_count => 1500)
+        @sw.update_ranks.should == 0
+        @sw.value_of(:rank_limit).should == [0, 0, 0, 0]
+      end
     end
-    
+
     context 'when only some are unindexed' do
       before(:each) do
         @id = @ids.shift # @ids only has unindexed left, after create!
