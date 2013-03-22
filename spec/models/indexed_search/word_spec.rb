@@ -120,31 +120,31 @@ describe IndexedSearch::Word do
       before(:each) { @ids.each { |id| create(:entry, :word_id => id) } }
 
       it 'updating counts should work' do
-	@sw.update_counts.should == 4
-	@sw.value_of(:entries_count).should == [1, 1, 1, 1]
+        @sw.update_counts.should == 4
+        @sw.value_of(:entries_count).should == [1, 1, 1, 1]
       end
       it 'incrementing counts should work' do
-	@sw.incr_counts_by_ids(@ids).should == 4
-	@sw.value_of(:entries_count).should == [1, 1, 1, 1]
+        @sw.incr_counts_by_ids(@ids).should == 4
+        @sw.value_of(:entries_count).should == [1, 1, 1, 1]
       end
       it 'decrementing counts should work' do
-	@sw.update_counts
-	@sw.decr_counts_by_ids(@ids).should == 4
+        @sw.update_counts
+        @sw.decr_counts_by_ids(@ids).should == 4
         @sw.value_of(:entries_count).should == [0, 0, 0, 0]
       end
       it 'updating ranks should not do anything with not enough entries' do
-	@sw.update_counts
-	@sw.update_ranks.should == 0
+        @sw.update_counts
+        @sw.update_ranks.should == 0
         @sw.value_of(:rank_limit).should == [0, 0, 0, 0]
       end
       it 'updating ranks by ids should not do anything with not enough entries' do
-	@sw.update_counts
-	@sw.update_ranks_by_ids(@ids).should == 0
+        @sw.update_counts
+        @sw.update_ranks_by_ids(@ids).should == 0
         @sw.value_of(:rank_limit).should == [0, 0, 0, 0]
       end
       it 'updating ranks by one id should not do anything with not enough entries' do
-	@sw.update_counts
-	@sw.update_ranks_by_ids([@ids.first]).should == 0
+        @sw.update_counts
+        @sw.update_ranks_by_ids([@ids.first]).should == 0
         @sw.value_of(:rank_limit).should == [0, 0, 0, 0]
       end
     
@@ -155,57 +155,57 @@ describe IndexedSearch::Word do
         end
 
         it 'updating counts should have worked' do
-	  @sw.update_counts
-	  @sw.value_of(:entries_count).sort.should == [1, 1, 1, 1501]
+          @sw.update_counts
+          @sw.value_of(:entries_count).sort.should == [1, 1, 1, 1501]
         end
         it 'updating ranks without counts should not work' do
-	  @sw.update_ranks.should == 0
-	  @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 0]
+          @sw.update_ranks.should == 0
+          @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 0]
         end
         it 'updating ranks with updated counts should work' do
-	  @sw.update_counts
-	  @sw.update_ranks.should == 1
-	  @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 1]
+          @sw.update_counts
+          @sw.update_ranks.should == 1
+          @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 1]
         end
         it 'updating ranks by ids should work' do
-	  @sw.update_counts
-	  @sw.update_ranks_by_ids(@ids).should == 1
-	  @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 1]
+          @sw.update_counts
+          @sw.update_ranks_by_ids(@ids).should == 1
+          @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 1]
         end
         it 'updating ranks by one id should work' do
-	  @sw.update_counts
-	  @sw.update_ranks_by_ids([@ids.first]).should == 1
-	  @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 1]
+          @sw.update_counts
+          @sw.update_ranks_by_ids([@ids.first]).should == 1
+          @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 1]
         end
-	it 'updating counts/orphans/ranks should work' do
+        it 'updating counts/orphans/ranks should work' do
           @se.where(:id => @ids.last).delete_all
-	  @sw.fix_counts_orphans_and_ranks.should == 5
-	  @sw.value_of(:entries_count).sort.should == [1, 1, 1501]
-	  @sw.value_of(:rank_limit).sort.should == [0, 0, 1]
-	end
+          @sw.fix_counts_orphans_and_ranks.should == 5
+          @sw.value_of(:entries_count).sort.should == [1, 1, 1501]
+          @sw.value_of(:rank_limit).sort.should == [0, 0, 1]
+        end
     
         context 'and then some indexes are removed' do
           before(:each) do
-	    @sw.update_counts
-	    @sw.update_ranks
-	    eids = @se.where(:word_id => @ids.first).limit(500).value_of(:id)
-	    @se.where(:id => eids).delete_all
-	    @sw.update_counts
+            @sw.update_counts
+            @sw.update_ranks
+            eids = @se.where(:word_id => @ids.first).limit(500).value_of(:id)
+            @se.where(:id => eids).delete_all
+            @sw.update_counts
           end
           it 'updating counts should have worked' do
-	    @sw.value_of(:entries_count).sort.should == [1, 1, 1, 1001]
+            @sw.value_of(:entries_count).sort.should == [1, 1, 1, 1001]
           end
           it 'updating ranks should work' do
-	    @sw.update_ranks.should == 1
-	    @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 0]
+            @sw.update_ranks.should == 1
+            @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 0]
           end
           it 'updating ranks by ids should work' do
-	    @sw.update_ranks_by_ids(@ids).should == 1
-	    @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 0]
+            @sw.update_ranks_by_ids(@ids).should == 1
+            @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 0]
           end
           it 'updating ranks by one id should work' do
-	    @sw.update_ranks_by_ids([@ids.first]).should == 1
-	    @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 0]
+            @sw.update_ranks_by_ids([@ids.first]).should == 1
+            @sw.value_of(:rank_limit).sort.should == [0, 0, 0, 0]
           end
         end # and then some indexes are removed
 
