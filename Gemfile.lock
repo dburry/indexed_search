@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    indexed_search (0.1.7)
+    indexed_search (0.1.8)
       activerecord-import
       each_batched (>= 0.1.3)
       rails (~> 3.0)
