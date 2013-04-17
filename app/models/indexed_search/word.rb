@@ -105,8 +105,8 @@ module IndexedSearch
       old_counts.keys.in_groups_of(GROUP_BY_AMOUNT, false) do |old_id_group|
         updates = {}
         IndexedSearch::Entry.where(:word_id => old_id_group).group(:word_id).count.each do |id, new_count|
-	  updates[id] = new_count if old_counts[id] != new_count
-	end
+          updates[id] = new_count if old_counts[id] != new_count
+        end
         updates.invert_multi.each { |new_count, up_ids| cnt += scoped.where(:id => up_ids).order('id').update_all(:entries_count => new_count) }
       end
       cnt
@@ -125,7 +125,7 @@ module IndexedSearch
         end
       else
         cnt = update_zeroed_ranks
-	updates = {}
+        updates = {}
         ids.in_groups_of(GROUP_BY_AMOUNT, false).each { |id_group| updates.merge!(where(:id => id_group).rank_limit_updates) }
         cnt += update_rank_limits(updates)
       end
