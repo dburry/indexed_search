@@ -97,6 +97,7 @@ module IndexedSearch
       where(:id => ids).order('id').update_all("entries_count = entries_count - #{offset}")
     end
 
+
     # update entries_count column for words
     def self.update_counts
       cnt = 0
@@ -116,10 +117,10 @@ module IndexedSearch
       cnt = 0
       if ids.length == 1
         (c, old_lim) = where(:id => ids.first).values_of(:entries_count, :rank_limit).first
-        if c  > rank_reduction_factor
+        if ! c.nil? && c  > rank_reduction_factor
           new_lim = calculate_rank_limit_for_id(ids.first)
           cnt += where(:id => ids.first).update_all(:rank_limit => new_lim) if new_lim != old_lim
-        elsif old_lim > 0
+        elsif ! old_lim.nil? && old_lim > 0
           cnt += zero_out_ranks_by_id(ids.first)
         end
       else
