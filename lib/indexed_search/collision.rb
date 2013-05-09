@@ -62,7 +62,8 @@ module IndexedSearch
       yield
     rescue ActiveRecord::RecordNotUnique
       raise TooManyCollisionsException.new('Too many db uniqueness collisions') if retry_count >= max_collision_retries
-      sleep(rand(wait_time_seconds[retry_count]))
+      rand_range = wait_time_seconds[retry_count]
+      sleep(rand(rand_range.end - rand_range.begin) + rand_range.begin) # rand(range) seems broken in 1.9.2-p320, so work around
       retrying_on_collision(retry_count + 1) { yield }
     end
 
