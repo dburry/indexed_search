@@ -1,0 +1,12 @@
+test: &test
+  adapter: mysql2
+  database: indexed_search_dummy_test
+  username: root
+  encoding: utf8
+
+production:
+  <<: *test
+
+development:
+  <<: *test
+

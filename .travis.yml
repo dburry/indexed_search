@@ -3,3 +3,8 @@ rvm:
   - 1.9.2
   - 1.9.3
   - 2.0.0
+before_script:
+  - mysql -e 'create database indexed_search_dummy_test;'
+  - cd spec/dummy
+  - cp config/database.travis.yml config/database.yml
+  - RAILS_ENV=test bundle exec rake db:migrate --trace
