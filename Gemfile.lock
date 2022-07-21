@@ -35,7 +35,6 @@ GEM
       tzinfo (~> 0.3.29)
     activerecord-import (0.3.0)
       activerecord (~> 3.0)
-      activerecord (~> 3.0)
     activeresource (3.2.8)
       activemodel (= 3.2.8)
       activesupport (= 3.2.8)
@@ -124,7 +123,7 @@ GEM
     treetop (1.4.12)
       polyglot
       polyglot (>= 0.3.1)
-    tzinfo (0.3.35)
+    tzinfo (0.3.61)
     unicode_utils (1.4.0)
     valium (0.5.0)
       activerecord (>= 3.0.2)
